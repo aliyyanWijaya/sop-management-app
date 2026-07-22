@@ -75,6 +75,32 @@ export default async function EditSopPage({
 
           <div>
             <label className="mb-1 block text-sm font-medium">
+              Document Number
+            </label>
+            <input
+              type="text"
+              value={sop.document_number}
+              disabled
+              className="w-full rounded border bg-gray-50 px-3 py-2 text-sm text-gray-500"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Auto-assigned per department and reserved — cannot be changed.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">SOP Title</label>
+            <input
+              name="title"
+              type="text"
+              defaultValue={sop.title}
+              required
+              className="w-full rounded border px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
               1.0 Purpose{" "}
               <span className="text-gray-400">
                 (intent of this document, 1-2 sentences)
@@ -130,7 +156,7 @@ export default async function EditSopPage({
               {
                 key: "title",
                 label: "Title",
-                placeholder: "e.g. Equipment Calibration",
+                placeholder: "e.g. SOP-QA-002 Equipment Calibration",
               },
             ]}
             initialItems={content.references ?? []}

@@ -8,6 +8,7 @@ export async function updateSopContent(formData: FormData) {
 
   const sopId = formData.get("sop_id") as string;
   const sopVersionId = formData.get("sop_version_id") as string;
+  const title = formData.get("title") as string;
   const purpose = formData.get("purpose") as string;
   const appliesTo = formData.get("scope_applies_to") as string;
   const excludes = formData.get("scope_excludes") as string;
@@ -60,6 +61,26 @@ export async function updateSopContent(formData: FormData) {
     procedure,
     appendices,
   };
+
+  if (!title?.trim()) {
+    redirect(
+      `/sop/${sopId}/edit?error=` + encodeURIComponent("Title cannot be empty"),
+    );
+  }
+
+  // Title lives on `sops`, not `sop_versions` — updated as a separate
+  // statement. RLS policy "sops_update_stakeholders_or_admin" already
+  // allows this for the author/reviewer/approver of the current version.
+  const { error: titleError } = await supabase
+    .from("sops")
+    .update({ title })
+    .eq("id", sopId);
+
+  if (titleError) {
+    redirect(
+      `/sop/${sopId}/edit?error=` + encodeURIComponent(titleError.message),
+    );
+  }
 
   const { error: updateError } = await supabase
     .from("sop_versions")

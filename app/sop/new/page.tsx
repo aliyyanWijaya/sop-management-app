@@ -39,19 +39,6 @@ export default async function NewSopPage({
 
       <form action={createSopDraft} className="flex flex-col gap-3">
         <div>
-          <label className="mb-1 block text-sm font-medium">
-            Document Number
-          </label>
-          <input
-            name="document_number"
-            type="text"
-            placeholder="e.g. SOP-QA-001"
-            required
-            className="w-full rounded border px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div>
           <label className="mb-1 block text-sm font-medium">SOP Title</label>
           <input
             name="title"
@@ -76,6 +63,10 @@ export default async function NewSopPage({
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-400">
+            The document number is generated automatically based on the
+            category&apos;s department (e.g. SOP-QA-0001).
+          </p>
         </div>
 
         <Button

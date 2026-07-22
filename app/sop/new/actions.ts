@@ -3,10 +3,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-// Simplest possible `content` shape for now — other sections (scope,
-// references, etc.) are added incrementally in later steps. This
-// structure must stay consistent with the jsonb schema we designed, so
-// it can be extended later without a migration.
+// Simplest possible `content` shape for now — other sections are filled
+// in on the edit page after the draft exists.
 const EMPTY_CONTENT = {
   purpose: "",
   scope: { applies_to: "", excludes: "" },
@@ -29,13 +27,28 @@ export async function createSopDraft(formData: FormData) {
   }
 
   const title = formData.get("title") as string;
-  const documentNumber = formData.get("document_number") as string;
   const categoryId = formData.get("category_id") as string;
 
-  if (!title || !documentNumber || !categoryId) {
+  if (!title || !categoryId) {
+    redirect(
+      "/sop/new?error=" + encodeURIComponent("Title and category are required"),
+    );
+  }
+
+  // Reserve the next sequential document number for this category's
+  // department (e.g. SOP-QA-0001) — this is atomic on the database side,
+  // so two people submitting at the same moment never get the same number.
+  const { data: documentNumber, error: numberError } = await supabase.rpc(
+    "generate_sop_document_number",
+    { p_category_id: categoryId },
+  );
+
+  if (numberError || !documentNumber) {
     redirect(
       "/sop/new?error=" +
-        encodeURIComponent("Title, document number, and category are required"),
+        encodeURIComponent(
+          numberError?.message ?? "Failed to generate document number",
+        ),
     );
   }
 
