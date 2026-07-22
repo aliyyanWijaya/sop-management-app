@@ -79,14 +79,61 @@ export default async function SopDetailPage({
           </p>
         )}
 
+        {version?.content?.references?.length > 0 && (
+          <div className="text-sm">
+            <p className="font-medium">3.0 References & Related Documents</p>
+            <ul className="ml-4 list-disc text-gray-700">
+              {version.content.references.map(
+                (ref: { title: string; doc_number: string }, i: number) => (
+                  <li key={i}>
+                    {ref.title} {ref.doc_number && `(${ref.doc_number})`}
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        )}
+
+        {version?.content?.definitions?.length > 0 && (
+          <div className="text-sm">
+            <p className="font-medium">4.0 Definitions</p>
+            <ul className="ml-4 list-disc text-gray-700">
+              {version.content.definitions.map(
+                (def: { term: string; definition: string }, i: number) => (
+                  <li key={i}>
+                    <span className="font-medium">{def.term}</span>:{" "}
+                    {def.definition}
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        )}
+
+        {version?.content?.roles_responsibilities?.length > 0 && (
+          <div className="text-sm">
+            <p className="font-medium">5.0 Roles and Responsibilities</p>
+            <ul className="ml-4 list-disc text-gray-700">
+              {version.content.roles_responsibilities.map(
+                (r: { role: string; responsibility: string }, i: number) => (
+                  <li key={i}>
+                    <span className="font-medium">{r.role}</span>:{" "}
+                    {r.responsibility}
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        )}
+
         {version?.status === "draft" && (
           <LinkButton href={`/sop/${sop.id}/edit`}>Edit</LinkButton>
         )}
       </div>
 
       <p className="text-xs text-gray-400">
-        Remaining sections (references, definitions, roles, procedure,
-        appendices) are added incrementally in later steps.
+        Remaining sections (procedure, appendices) are added incrementally in
+        later steps.
       </p>
     </div>
   );

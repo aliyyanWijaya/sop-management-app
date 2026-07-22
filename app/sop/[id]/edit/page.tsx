@@ -2,12 +2,12 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateSopContent } from "./actions";
 import { Button } from "@/components/ui/Button";
+import { DynamicListEditor } from "@/components/sop/DynamicListEditor";
 
-// Step 2b: edit form for the Purpose & Scope sections.
-// Other sections (references, definitions, roles, procedure, appendices)
-// are added here incrementally in steps 2c and 2d — this page's pattern
-// (fetch existing content → render field → server action merge & save)
-// stays the same, just with more fields.
+// Step 2b/2c: edit form for Purpose, Scope, References, Definitions, and
+// Roles & Responsibilities. Procedure and Appendices (step 2d) are added
+// here next — same pattern (fetch existing content → render field →
+// server action merge & save), just with more fields/sections.
 export default async function EditSopPage({
   params,
   searchParams,
@@ -116,6 +116,55 @@ export default async function EditSopPage({
               placeholder="e.g. Does not apply to imported raw materials (see SOP-QA-005)."
             />
           </div>
+
+          <DynamicListEditor
+            name="references_json"
+            title="3.0 References & Related Documents"
+            fields={[
+              {
+                key: "title",
+                label: "Title",
+                placeholder: "e.g. SOP-QA-002 Equipment Calibration",
+              },
+              {
+                key: "doc_number",
+                label: "Doc. Number",
+                placeholder: "e.g. SOP-QA-002",
+              },
+            ]}
+            initialItems={content.references ?? []}
+            addLabel="Add reference"
+          />
+
+          <DynamicListEditor
+            name="definitions_json"
+            title="4.0 Definitions"
+            fields={[
+              { key: "term", label: "Term", placeholder: "e.g. CAPA" },
+              {
+                key: "definition",
+                label: "Definition",
+                placeholder: "e.g. Corrective and Preventive Action",
+              },
+            ]}
+            initialItems={content.definitions ?? []}
+            addLabel="Add definition"
+          />
+
+          <DynamicListEditor
+            name="roles_responsibilities_json"
+            title="5.0 Roles and Responsibilities"
+            fields={[
+              { key: "role", label: "Role", placeholder: "e.g. QA Officer" },
+              {
+                key: "responsibility",
+                label: "Responsibility",
+                placeholder: "e.g. Performs daily equipment checks",
+              },
+            ]}
+            initialItems={content.roles_responsibilities ?? []}
+            addLabel="Add role"
+          />
 
           <Button type="submit" className="mt-2 w-fit">
             Save

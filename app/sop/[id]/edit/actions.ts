@@ -12,6 +12,25 @@ export async function updateSopContent(formData: FormData) {
   const appliesTo = formData.get("scope_applies_to") as string;
   const excludes = formData.get("scope_excludes") as string;
 
+  // These three come from DynamicListEditor as a JSON string (array of
+  // {key: value} row objects) — parsed here rather than trying to encode
+  // an array of objects as flat form fields. Falls back to [] if the
+  // JSON is somehow malformed, rather than crashing the whole save.
+  function safeParseArray(raw: FormDataEntryValue | null) {
+    try {
+      const parsed = JSON.parse((raw as string) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  const references = safeParseArray(formData.get("references_json"));
+  const definitions = safeParseArray(formData.get("definitions_json"));
+  const rolesResponsibilities = safeParseArray(
+    formData.get("roles_responsibilities_json"),
+  );
+
   // Fetch the existing content first — so other sections (references,
   // procedure, etc., which don't have UI yet at this step) aren't wiped
   // out. This is a "fetch, merge, write" pattern since we're updating
@@ -33,6 +52,9 @@ export async function updateSopContent(formData: FormData) {
     ...existing!.content,
     purpose,
     scope: { applies_to: appliesTo, excludes },
+    references,
+    definitions,
+    roles_responsibilities: rolesResponsibilities,
   };
 
   const { error: updateError } = await supabase
