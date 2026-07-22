@@ -122,14 +122,14 @@ export default async function EditSopPage({
             title="3.0 References & Related Documents"
             fields={[
               {
-                key: "title",
-                label: "Title",
-                placeholder: "e.g. SOP-QA-002 Equipment Calibration",
-              },
-              {
                 key: "doc_number",
                 label: "Doc. Number",
                 placeholder: "e.g. SOP-QA-002",
+              },
+              {
+                key: "title",
+                label: "Title",
+                placeholder: "e.g. Equipment Calibration",
               },
             ]}
             initialItems={content.references ?? []}
