@@ -1,26 +1,26 @@
-import Link from 'next/link'
-import type { SopListItem } from '@/lib/types'
-import { SopStatusBadge } from './SopStatusBadge'
+import Link from "next/link";
+import type { SopListItem } from "@/lib/types";
+import { SopStatusBadge } from "./SopStatusBadge";
 
 export function SopTable({ sops }: { sops: SopListItem[] }) {
   if (sops.length === 0) {
     return (
       <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">
-        Belum ada SOP. Klik &quot;Buat SOP Baru&quot; di sidebar untuk mulai.
+        No SOPs yet. Click &quot;New SOP&quot; in the sidebar to get started.
       </p>
-    )
+    );
   }
 
   return (
     <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm shadow-sm">
       <thead>
         <tr className="border-b bg-gray-50 text-left text-gray-600">
-          <th className="px-4 py-3 font-medium">No. Dokumen</th>
-          <th className="px-4 py-3 font-medium">Judul</th>
-          <th className="px-4 py-3 font-medium">Kategori</th>
-          <th className="px-4 py-3 font-medium">Versi</th>
+          <th className="px-4 py-3 font-medium">Doc. Number</th>
+          <th className="px-4 py-3 font-medium">Title</th>
+          <th className="px-4 py-3 font-medium">Category</th>
+          <th className="px-4 py-3 font-medium">Version</th>
           <th className="px-4 py-3 font-medium">Status</th>
-          <th className="px-4 py-3 font-medium">Berlaku s/d</th>
+          <th className="px-4 py-3 font-medium">Valid Until</th>
         </tr>
       </thead>
       <tbody>
@@ -30,23 +30,30 @@ export function SopTable({ sops }: { sops: SopListItem[] }) {
               {sop.document_number}
             </td>
             <td className="px-4 py-3">
-              <Link href={`/sop/${sop.id}`} className="font-medium text-gray-900 hover:underline">
+              <Link
+                href={`/sop/${sop.id}`}
+                className="font-medium text-gray-900 hover:underline"
+              >
                 {sop.title}
               </Link>
             </td>
-            <td className="px-4 py-3 text-gray-600">{sop.category?.name ?? '-'}</td>
             <td className="px-4 py-3 text-gray-600">
-              {sop.current_version ? `v${sop.current_version.version_number}` : '-'}
+              {sop.category?.name ?? "-"}
+            </td>
+            <td className="px-4 py-3 text-gray-600">
+              {sop.current_version
+                ? `v${sop.current_version.version_number}`
+                : "-"}
             </td>
             <td className="px-4 py-3">
               <SopStatusBadge status={sop.status} />
             </td>
             <td className="px-4 py-3 text-gray-600">
-              {sop.current_version?.valid_until ?? '-'}
+              {sop.current_version?.valid_until ?? "-"}
             </td>
           </tr>
         ))}
       </tbody>
     </table>
-  )
+  );
 }

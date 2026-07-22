@@ -1,21 +1,23 @@
-import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { SopStatusBadge } from '@/components/sop/SopStatusBadge'
-import type { SopStatus } from '@/lib/types'
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { SopStatusBadge } from "@/components/sop/SopStatusBadge";
+import { LinkButton } from "@/components/ui/Button";
+import type { SopStatus } from "@/lib/types";
 
-// Versi awal halaman detail — cukup buat verifikasi hasil form authoring
-// (2a). Section content (purpose, scope, procedure, dst) baru ditambahkan
-// full di langkah 2b-2d, termasuk tombol edit & submit for review.
+// Early version of the detail page — just enough to verify the result of
+// the authoring form (2a/2b). Remaining sections (references, definitions,
+// roles, procedure, appendices) and review/approval actions are added in
+// later steps.
 export default async function SopDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = await params
-  const supabase = await createClient()
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: sop } = await supabase
-    .from('sops')
+    .from("sops")
     .select(
       `
       id, title, document_number, status,
@@ -23,71 +25,69 @@ export default async function SopDetailPage({
       current_version:sop_versions!fk_sops_current_version (
         id, version_number, status, content, author_id
       )
-    `
+    `,
     )
-    .eq('id', id)
-    .single()
+    .eq("id", id)
+    .single();
 
   if (!sop) {
-    // RLS otomatis bikin query di atas balik null kalau bukan
-    // stakeholder-nya dan SOP belum published — jadi notFound() di sini
-    // sekaligus berfungsi sebagai proteksi akses, bukan cuma "data hilang".
-    notFound()
+    // RLS makes the query above return null if the current user isn't a
+    // stakeholder and the SOP isn't published yet — so notFound() here
+    // doubles as an access guard, not just a "data missing" case.
+    notFound();
   }
 
   const version = Array.isArray(sop.current_version)
     ? sop.current_version[0]
-    : sop.current_version
-  const category = Array.isArray(sop.category) ? sop.category[0] : sop.category
+    : sop.current_version;
+  const category = Array.isArray(sop.category) ? sop.category[0] : sop.category;
 
   return (
     <div className="max-w-2xl space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-mono text-xs text-gray-500">{sop.document_number}</p>
+          <p className="font-mono text-xs text-gray-500">
+            {sop.document_number}
+          </p>
           <h1 className="text-xl font-semibold">{sop.title}</h1>
-          <p className="text-sm text-gray-500">{category?.name ?? '-'}</p>
+          <p className="text-sm text-gray-500">{category?.name ?? "-"}</p>
         </div>
         <SopStatusBadge status={sop.status as SopStatus} />
       </div>
 
       <div className="rounded-lg border bg-white p-4 space-y-3">
         <p className="text-sm text-gray-500">
-          Versi {version?.version_number ?? '-'} — status: {version?.status ?? '-'}
+          Version {version?.version_number ?? "-"} — status:{" "}
+          {version?.status ?? "-"}
         </p>
         <p className="text-sm">
           <span className="font-medium">Purpose: </span>
           {version?.content?.purpose || (
-            <span className="italic text-gray-400">belum diisi</span>
+            <span className="italic text-gray-400">not filled in yet</span>
           )}
         </p>
         <p className="text-sm">
-          <span className="font-medium">Scope — Berlaku untuk: </span>
+          <span className="font-medium">Scope — Applies to: </span>
           {version?.content?.scope?.applies_to || (
-            <span className="italic text-gray-400">belum diisi</span>
+            <span className="italic text-gray-400">not filled in yet</span>
           )}
         </p>
         {version?.content?.scope?.excludes && (
           <p className="text-sm">
-            <span className="font-medium">Scope — Tidak berlaku untuk: </span>
+            <span className="font-medium">Scope — Does not apply to: </span>
             {version.content.scope.excludes}
           </p>
         )}
 
-        {version?.status === 'draft' && (
-          <a
-            href={`/sop/${sop.id}/edit`}
-            className="inline-block rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
-          >
-            Edit
-          </a>
+        {version?.status === "draft" && (
+          <LinkButton href={`/sop/${sop.id}/edit`}>Edit</LinkButton>
         )}
       </div>
 
       <p className="text-xs text-gray-400">
-        Section lengkap lainnya (references, definitions, roles, procedure,
-        appendices) ditambahkan bertahap di langkah berikutnya.
+        Remaining sections (references, definitions, roles, procedure,
+        appendices) are added incrementally in later steps.
       </p>
     </div>
-  )
+  );
 }

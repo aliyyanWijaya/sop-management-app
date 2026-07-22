@@ -1,11 +1,12 @@
-import { logout } from '@/app/auth/actions'
-import type { CurrentUser } from '@/lib/types'
+import { logout } from "@/app/auth/actions";
+import { Button } from "@/components/ui/Button";
+import type { CurrentUser } from "@/lib/types";
 
 const ROLE_LABEL: Record<string, string> = {
-  staff: 'Staff',
-  document_controller: 'Document Controller',
-  admin: 'Admin',
-}
+  staff: "Staff",
+  document_controller: "Document Controller",
+  admin: "Admin",
+};
 
 export function Header({ user }: { user: CurrentUser }) {
   return (
@@ -20,16 +21,13 @@ export function Header({ user }: { user: CurrentUser }) {
           </p>
         </div>
 
-        {/* Form action ke Server Action — tidak butuh "use client" atau onClick */}
+        {/* Form action to a Server Action — no "use client" or onClick needed */}
         <form action={logout}>
-          <button
-            type="submit"
-            className="rounded border px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-          >
+          <Button type="submit" variant="secondary" className="px-3 py-1.5">
             Logout
-          </button>
+          </Button>
         </form>
       </div>
     </header>
-  )
+  );
 }

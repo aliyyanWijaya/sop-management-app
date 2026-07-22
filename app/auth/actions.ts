@@ -7,17 +7,14 @@ import { createClient } from "@/lib/supabase/server";
 export async function signup(formData: FormData) {
   const supabase = await createClient();
 
-  // Tambahkan .trim() dan penanganan karakter huruf kecil pada email
-  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const name = (formData.get("name") as string)?.trim();
+  const name = formData.get("name") as string;
   const departmentId = formData.get("department_id") as string;
 
-  // Pastikan email tidak kosong sebelum dikirim ke Supabase
-  if (!email) {
-    redirect("/signup?error=" + encodeURIComponent("Email tidak boleh kosong"));
-  }
-
+  // `name` and `department_id` are stashed in user_metadata so the
+  // `on_auth_user_created` database trigger can read them and use them
+  // to populate the matching row in the `users` table automatically.
   const { error } = await supabase.auth.signUp({
     email,
     password,
@@ -34,13 +31,16 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/login?message=Cek email untuk konfirmasi akun");
+  redirect(
+    "/login?message=" +
+      encodeURIComponent("Check your email to confirm your account"),
+  );
 }
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
-  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
