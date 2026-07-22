@@ -30,6 +30,8 @@ export async function updateSopContent(formData: FormData) {
   const rolesResponsibilities = safeParseArray(
     formData.get("roles_responsibilities_json"),
   );
+  const procedure = safeParseArray(formData.get("procedure_json"));
+  const appendices = safeParseArray(formData.get("appendices_json"));
 
   // Fetch the existing content first — so other sections (references,
   // procedure, etc., which don't have UI yet at this step) aren't wiped
@@ -55,6 +57,8 @@ export async function updateSopContent(formData: FormData) {
     references,
     definitions,
     roles_responsibilities: rolesResponsibilities,
+    procedure,
+    appendices,
   };
 
   const { error: updateError } = await supabase

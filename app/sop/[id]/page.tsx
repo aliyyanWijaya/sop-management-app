@@ -126,14 +126,78 @@ export default async function SopDetailPage({
           </div>
         )}
 
+        {version?.content?.procedure?.length > 0 && (
+          <div className="text-sm">
+            <p className="font-medium">6.0 Procedure</p>
+            <ol className="ml-4 list-decimal space-y-2 text-gray-700">
+              {version.content.procedure.map(
+                (
+                  step: {
+                    major_step: string;
+                    actions: string[];
+                    notes: string[];
+                  },
+                  i: number,
+                ) => (
+                  <li key={i}>
+                    <span className="font-medium">{step.major_step}</span>
+                    {step.actions?.length > 0 && (
+                      <ul className="ml-4 list-disc">
+                        {step.actions.map((action, j) => (
+                          <li key={j}>{action}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {step.notes?.length > 0 && (
+                      <p className="mt-1 text-xs italic text-gray-500">
+                        Note: {step.notes.join(" • ")}
+                      </p>
+                    )}
+                  </li>
+                ),
+              )}
+            </ol>
+          </div>
+        )}
+
+        {version?.content?.appendices?.length > 0 && (
+          <div className="text-sm">
+            <p className="font-medium">7.0 Appendices</p>
+            <ul className="ml-4 list-disc text-gray-700">
+              {version.content.appendices.map(
+                (
+                  a: { type: string; description: string; file_url: string },
+                  i: number,
+                ) => (
+                  <li key={i}>
+                    {a.description} {a.type && `(${a.type})`}
+                    {a.file_url && (
+                      <>
+                        {" — "}
+                        <a
+                          href={a.file_url}
+                          className="underline"
+                          target="_blank"
+                        >
+                          view
+                        </a>
+                      </>
+                    )}
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        )}
+
         {version?.status === "draft" && (
           <LinkButton href={`/sop/${sop.id}/edit`}>Edit</LinkButton>
         )}
       </div>
 
       <p className="text-xs text-gray-400">
-        Remaining sections (procedure, appendices) are added incrementally in
-        later steps.
+        All template sections are now editable. &quot;Submit for Review&quot; is
+        added in the next step.
       </p>
     </div>
   );

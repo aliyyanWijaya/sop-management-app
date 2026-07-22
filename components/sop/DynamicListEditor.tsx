@@ -15,7 +15,7 @@ type Props = {
   /** section title shown above the list, e.g. "3.0 References" */
   title: string;
   /** the two fields each row has, e.g. [{key:'title'}, {key:'doc_number'}] */
-  fields: [FieldConfig, FieldConfig];
+  fields: FieldConfig[];
   initialItems?: Record<string, string>[];
   addLabel?: string;
 };
@@ -35,7 +35,8 @@ export function DynamicListEditor({
   );
 
   function addRow() {
-    setItems([...items, { [fields[0].key]: "", [fields[1].key]: "" }]);
+    const emptyRow = Object.fromEntries(fields.map((f) => [f.key, ""]));
+    setItems([...items, emptyRow]);
   }
 
   function removeRow(index: number) {

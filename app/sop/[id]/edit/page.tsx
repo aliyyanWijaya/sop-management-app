@@ -3,11 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { updateSopContent } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { DynamicListEditor } from "@/components/sop/DynamicListEditor";
+import { ProcedureEditor } from "@/components/sop/ProcedureEditor";
 
-// Step 2b/2c: edit form for Purpose, Scope, References, Definitions, and
-// Roles & Responsibilities. Procedure and Appendices (step 2d) are added
-// here next — same pattern (fetch existing content → render field →
-// server action merge & save), just with more fields/sections.
+// Full authoring form: Purpose, Scope, References, Definitions, Roles &
+// Responsibilities, Procedure (nested major steps), and Appendices —
+// all sections of the SOP template are now covered. Fetch existing
+// content → render fields → server action merges & saves back.
 export default async function EditSopPage({
   params,
   searchParams,
@@ -164,6 +165,31 @@ export default async function EditSopPage({
             ]}
             initialItems={content.roles_responsibilities ?? []}
             addLabel="Add role"
+          />
+
+          <ProcedureEditor
+            name="procedure_json"
+            initialSteps={content.procedure ?? []}
+          />
+
+          <DynamicListEditor
+            name="appendices_json"
+            title="7.0 Appendices"
+            fields={[
+              { key: "type", label: "Type", placeholder: "e.g. flowchart" },
+              {
+                key: "description",
+                label: "Description",
+                placeholder: "e.g. Inspection flow diagram",
+              },
+              {
+                key: "file_url",
+                label: "File URL",
+                placeholder: "e.g. https://...",
+              },
+            ]}
+            initialItems={content.appendices ?? []}
+            addLabel="Add appendix"
           />
 
           <Button type="submit" className="mt-2 w-fit">
