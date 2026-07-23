@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type FieldConfig = {
   key: string;
@@ -14,15 +15,15 @@ type Props = {
   name: string;
   /** section title shown above the list, e.g. "3.0 References" */
   title: string;
-  /** the two fields each row has, e.g. [{key:'title'}, {key:'doc_number'}] */
+  /** the fields each row has, e.g. [{key:'title'}, {key:'doc_number'}] */
   fields: FieldConfig[];
   initialItems?: Record<string, string>[];
   addLabel?: string;
 };
 
-// One reusable editor for all three "list of 2 fields" sections
-// (references, definitions, roles_responsibilities) — avoids writing
-// near-identical add/remove-row logic three times.
+// One reusable editor for all "list of N fields" sections (references,
+// definitions, roles_responsibilities, appendices) — avoids writing
+// near-identical add/remove-row logic for each one.
 export function DynamicListEditor({
   name,
   title,
@@ -55,8 +56,9 @@ export function DynamicListEditor({
         <label className="block text-sm font-medium">{title}</label>
         <Button
           type="button"
-          variant="secondary"
-          className="px-2 py-1 text-xs"
+          variant="outline"
+          size="sm"
+          className="cursor-pointer transition-transform active:scale-95"
           onClick={addRow}
         >
           + {addLabel}
@@ -64,7 +66,7 @@ export function DynamicListEditor({
       </div>
 
       {items.length === 0 && (
-        <p className="text-xs italic text-gray-400">No entries yet.</p>
+        <p className="text-xs italic text-muted-foreground">No entries yet.</p>
       )}
 
       {items.length > 0 && (
@@ -72,7 +74,7 @@ export function DynamicListEditor({
           {fields.map((field) => (
             <p
               key={field.key}
-              className="w-full text-xs font-medium text-gray-500"
+              className="w-full text-xs font-medium text-muted-foreground"
             >
               {field.label}
             </p>
@@ -86,19 +88,19 @@ export function DynamicListEditor({
         {items.map((item, index) => (
           <div key={index} className="flex gap-2">
             {fields.map((field) => (
-              <input
+              <Input
                 key={field.key}
                 type="text"
                 value={item[field.key] ?? ""}
                 onChange={(e) => updateRow(index, field.key, e.target.value)}
                 placeholder={field.placeholder ?? field.label}
-                className="w-full rounded border px-3 py-2 text-sm"
               />
             ))}
             <Button
               type="button"
-              variant="danger"
-              className="px-2 py-1 text-xs"
+              variant="destructive"
+              size="sm"
+              className="shrink-0 cursor-pointer transition-transform active:scale-95"
               onClick={() => removeRow(index)}
             >
               Remove

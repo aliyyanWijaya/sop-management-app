@@ -16,14 +16,21 @@ export function Header({ user }: { user: CurrentUser }) {
       <div className="flex items-center gap-4">
         <div className="text-right text-sm">
           <p className="font-medium leading-tight">{user.name}</p>
-          <p className="text-xs text-gray-500 leading-tight">
+          <p className="text-xs text-muted-foreground leading-tight">
             {ROLE_LABEL[user.role] ?? user.role}
           </p>
         </div>
 
         {/* Form action to a Server Action — no "use client" or onClick needed */}
         <form action={logout}>
-          <Button type="submit">Logout</Button>
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            className="cursor-pointer transition-transform active:scale-95"
+          >
+            Logout
+          </Button>
         </form>
       </div>
     </header>

@@ -1,46 +1,57 @@
-import { login } from '@/app/auth/actions'
+import { login } from "@/app/auth/actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; message?: string }>
+  searchParams: Promise<{ error?: string; message?: string }>;
 }) {
-  const params = await searchParams
+  const params = await searchParams;
 
   return (
     <div className="mx-auto mt-20 max-w-sm">
-      <h1 className="mb-6 text-xl font-semibold">Login</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Login</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {params.message && (
+            <p className="mb-4 rounded bg-green-50 p-3 text-sm text-green-700">
+              {params.message}
+            </p>
+          )}
+          {params.error && (
+            <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+              {params.error}
+            </p>
+          )}
 
-      {params.message && (
-        <p className="mb-4 rounded bg-green-50 p-3 text-sm text-green-700">{params.message}</p>
-      )}
-      {params.error && (
-        <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{params.error}</p>
-      )}
+          <form action={login} className="flex flex-col gap-3">
+            <Input name="email" type="email" placeholder="Email" required />
+            <Input
+              name="password"
+              type="password"
+              placeholder="Password"
+              required
+            />
+            <Button
+              type="submit"
+              className="cursor-pointer transition-transform active:scale-95"
+            >
+              Login
+            </Button>
+          </form>
 
-      <form action={login} className="flex flex-col gap-3">
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          required
-          className="rounded border px-3 py-2"
-        />
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          required
-          className="rounded border px-3 py-2"
-        />
-        <button type="submit" className="rounded bg-black py-2 text-white">
-          Login
-        </button>
-      </form>
-
-      <p className="mt-4 text-sm">
-        Belum punya akun? <a href="/signup" className="underline">Daftar</a>
-      </p>
+          <p className="mt-4 text-sm">
+            Don&apos;t have an account?{" "}
+            <a href="/signup" className="underline">
+              Sign up
+            </a>
+          </p>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

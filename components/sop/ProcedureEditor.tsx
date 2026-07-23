@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type ProcedureStep = {
   major_step: string;
@@ -27,7 +28,7 @@ function StringSubList({
     <div className="space-y-1.5">
       {items.map((value, i) => (
         <div key={i} className="flex gap-2">
-          <input
+          <Input
             type="text"
             value={value}
             onChange={(e) => {
@@ -36,12 +37,13 @@ function StringSubList({
               onChange(next);
             }}
             placeholder={placeholder}
-            className="w-full rounded border px-2 py-1.5 text-sm"
+            className="h-8"
           />
           <Button
             type="button"
-            variant="danger"
-            className="px-2 py-1 text-xs"
+            variant="destructive"
+            size="sm"
+            className="shrink-0 cursor-pointer transition-transform active:scale-95"
             onClick={() => onChange(items.filter((_, idx) => idx !== i))}
           >
             Remove
@@ -50,8 +52,9 @@ function StringSubList({
       ))}
       <Button
         type="button"
-        variant="secondary"
-        className="px-2 py-1 text-xs"
+        variant="outline"
+        size="sm"
+        className="cursor-pointer transition-transform active:scale-95"
         onClick={() => onChange([...items, ""])}
       >
         + {addLabel}
@@ -90,8 +93,9 @@ export function ProcedureEditor({
         <label className="block text-sm font-medium">6.0 Procedure</label>
         <Button
           type="button"
-          variant="secondary"
-          className="px-2 py-1 text-xs"
+          variant="outline"
+          size="sm"
+          className="cursor-pointer transition-transform active:scale-95"
           onClick={addStep}
         >
           + Add major step
@@ -99,29 +103,33 @@ export function ProcedureEditor({
       </div>
 
       {steps.length === 0 && (
-        <p className="text-xs italic text-gray-400">No steps yet.</p>
+        <p className="text-xs italic text-muted-foreground">No steps yet.</p>
       )}
 
       <div className="space-y-4">
         {steps.map((step, index) => (
-          <div key={index} className="rounded border bg-gray-50 p-3 space-y-3">
+          <div
+            key={index}
+            className="rounded-md border bg-muted/40 p-3 space-y-3"
+          >
             <div className="flex items-center gap-2">
-              <span className="shrink-0 text-xs font-medium text-gray-500">
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">
                 Step {index + 1}
               </span>
-              <input
+              <Input
                 type="text"
                 value={step.major_step}
                 onChange={(e) =>
                   updateStep(index, { major_step: e.target.value })
                 }
                 placeholder="e.g. Equipment preparation"
-                className="w-full rounded border px-2 py-1.5 text-sm font-medium"
+                className="h-8 font-medium"
               />
               <Button
                 type="button"
-                variant="danger"
-                className="shrink-0 px-2 py-1 text-xs"
+                variant="destructive"
+                size="sm"
+                className="shrink-0 cursor-pointer transition-transform active:scale-95"
                 onClick={() => removeStep(index)}
               >
                 Remove step
@@ -129,7 +137,7 @@ export function ProcedureEditor({
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium text-gray-500">
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
                 Action Steps
               </p>
               <StringSubList
@@ -141,8 +149,9 @@ export function ProcedureEditor({
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium text-gray-500">
-                Notes <span className="text-gray-400">(optional)</span>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                Notes{" "}
+                <span className="text-muted-foreground/70">(optional)</span>
               </p>
               <StringSubList
                 items={step.notes}
