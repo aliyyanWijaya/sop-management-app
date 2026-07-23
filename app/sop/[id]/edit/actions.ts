@@ -93,5 +93,51 @@ export async function updateSopContent(formData: FormData) {
     );
   }
 
+  // Quiz questions live in their own table (quiz_questions), not in the
+  // jsonb `content` column — synced here with a "delete then insert"
+  // pattern so the saved set always matches exactly what's in the form,
+  // regardless of how many questions were added/removed/reordered.
+  const quizQuestions = safeParseArray(formData.get("quiz_questions_json")) as {
+    question_text: string;
+    options: string[];
+    correct_option: number;
+  }[];
+
+  const { error: deleteQuizError } = await supabase
+    .from("quiz_questions")
+    .delete()
+    .eq("sop_version_id", sopVersionId);
+
+  if (deleteQuizError) {
+    redirect(
+      `/sop/${sopId}/edit?error=` + encodeURIComponent(deleteQuizError.message),
+    );
+  }
+
+  const validQuestions = quizQuestions.filter(
+    (q) =>
+      q.question_text?.trim() && q.options?.filter((o) => o.trim()).length >= 2,
+  );
+
+  if (validQuestions.length > 0) {
+    const { error: insertQuizError } = await supabase
+      .from("quiz_questions")
+      .insert(
+        validQuestions.map((q) => ({
+          sop_version_id: sopVersionId,
+          question_text: q.question_text,
+          options: q.options,
+          correct_option: q.correct_option,
+        })),
+      );
+
+    if (insertQuizError) {
+      redirect(
+        `/sop/${sopId}/edit?error=` +
+          encodeURIComponent(insertQuizError.message),
+      );
+    }
+  }
+
   redirect(`/sop/${sopId}`);
 }

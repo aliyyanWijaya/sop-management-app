@@ -27,6 +27,11 @@ const NAV_ITEMS = [
     roles: ["staff", "document_controller", "admin"],
   },
   {
+    href: "/sop/my-trainings",
+    label: "My Trainings",
+    roles: ["staff", "document_controller", "admin"],
+  },
+  {
     href: "/sop/master-data",
     label: "Master Data",
     roles: ["document_controller", "admin"], // only visible for this role

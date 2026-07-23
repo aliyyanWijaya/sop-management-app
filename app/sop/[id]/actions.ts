@@ -3,6 +3,21 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+// STUB — no real email provider is wired up yet. Replace this with a call
+// to an actual transactional email service (e.g. Resend, Postmark, SES)
+// once you have API credentials. For now this just logs, so the rest of
+// the socialization flow (records, quiz, tracking) can be built and
+// tested without depending on email infrastructure.
+async function sendSocializationEmail(
+  to: string,
+  sopTitle: string,
+  sopDocumentNumber: string,
+) {
+  console.log(
+    `[stub email] To: ${to} — Subject: New SOP published: ${sopDocumentNumber} ${sopTitle}`,
+  );
+}
+
 // Minimal validation before a draft is allowed to leave "draft" status —
 // prevents an empty/near-empty SOP from ever reaching a reviewer.
 function validateContentComplete(content: {
@@ -272,6 +287,55 @@ export async function approverDecision(formData: FormData) {
       redirect(
         `/sop/${sopId}?error=` + encodeURIComponent(actionError.message),
       );
+    }
+
+    // Generate one socialization_records row per user in this SOP's
+    // department, and (for now) log a stub email to each of them.
+    // Errors here are logged but don't block the publish itself — the
+    // SOP is already published at this point; socialization is a
+    // follow-on step, not a precondition for publishing.
+    const { data: sopWithDept } = await supabase
+      .from("sops")
+      .select("title, document_number, category:sop_categories(department_id)")
+      .eq("id", sopId)
+      .single();
+
+    const category = Array.isArray(sopWithDept?.category)
+      ? sopWithDept.category[0]
+      : sopWithDept?.category;
+
+    if (category?.department_id) {
+      const { data: departmentUsers } = await supabase
+        .from("users")
+        .select("id, email")
+        .eq("department_id", category.department_id);
+
+      if (departmentUsers && departmentUsers.length > 0) {
+        const { error: socializationError } = await supabase
+          .from("socialization_records")
+          .insert(
+            departmentUsers.map((u) => ({
+              sop_version_id: sopVersionId,
+              user_id: u.id,
+              notified_at: new Date().toISOString(),
+            })),
+          );
+
+        if (socializationError) {
+          console.error(
+            "Failed to create socialization_records:",
+            socializationError.message,
+          );
+        } else {
+          for (const u of departmentUsers) {
+            await sendSocializationEmail(
+              u.email,
+              sopWithDept!.title,
+              sopWithDept!.document_number,
+            );
+          }
+        }
+      }
     }
   } else {
     const { error: updateVersionError } = await supabase

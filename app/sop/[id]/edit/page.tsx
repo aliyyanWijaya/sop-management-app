@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DynamicListEditor } from "@/components/sop/DynamicListEditor";
 import { ProcedureEditor } from "@/components/sop/ProcedureEditor";
+import { QuizEditor } from "@/components/sop/QuizEditor";
 
 // Full authoring form: Title, Purpose, Scope, References, Definitions,
 // Roles & Responsibilities, Procedure (nested major steps), and
@@ -51,6 +52,11 @@ export default async function EditSopPage({
 
   const canEdit = version!.status === "draft";
   const content = version!.content ?? {};
+
+  const { data: quizQuestions } = await supabase
+    .from("quiz_questions")
+    .select("question_text, options, correct_option")
+    .eq("sop_version_id", version!.id);
 
   return (
     <div className="max-w-2xl">
@@ -232,6 +238,13 @@ export default async function EditSopPage({
                 ]}
                 initialItems={content.appendices ?? []}
                 addLabel="Add appendix"
+              />
+
+              <Separator />
+
+              <QuizEditor
+                name="quiz_questions_json"
+                initialQuestions={quizQuestions ?? []}
               />
 
               <Button
