@@ -1,5 +1,5 @@
 import { logout } from "@/app/auth/actions";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import type { CurrentUser } from "@/lib/types";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -23,9 +23,7 @@ export function Header({ user }: { user: CurrentUser }) {
 
         {/* Form action to a Server Action — no "use client" or onClick needed */}
         <form action={logout}>
-          <Button type="submit" variant="secondary" className="px-3 py-1.5">
-            Logout
-          </Button>
+          <Button type="submit">Logout</Button>
         </form>
       </div>
     </header>
