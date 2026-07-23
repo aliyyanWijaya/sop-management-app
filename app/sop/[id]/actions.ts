@@ -131,3 +131,186 @@ export async function submitForReview(formData: FormData) {
 
   redirect(`/sop/${sopId}`);
 }
+
+// ---------------------------------------------------------
+// Reviewer decision: approve (moves to approver) or request revision
+// (kicks it back to the author as a draft)
+// ---------------------------------------------------------
+export async function reviewerDecision(formData: FormData) {
+  const supabase = await createClient();
+
+  const sopId = formData.get("sop_id") as string;
+  const sopVersionId = formData.get("sop_version_id") as string;
+  const decision = formData.get("decision") as "approve" | "request_revision";
+  const comment = (formData.get("comment") as string) || null;
+
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    redirect("/login");
+  }
+
+  const nextVersionStatus = decision === "approve" ? "in_approval" : "draft";
+  const nextSopStatus = decision === "approve" ? "in_approval" : "draft";
+  const action =
+    decision === "approve" ? "review_approved" : "revision_requested";
+
+  const { error: updateVersionError } = await supabase
+    .from("sop_versions")
+    .update({
+      status: nextVersionStatus,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", sopVersionId);
+
+  if (updateVersionError) {
+    redirect(
+      `/sop/${sopId}?error=` + encodeURIComponent(updateVersionError.message),
+    );
+  }
+
+  const { error: updateSopError } = await supabase
+    .from("sops")
+    .update({ status: nextSopStatus })
+    .eq("id", sopId);
+
+  if (updateSopError) {
+    redirect(
+      `/sop/${sopId}?error=` + encodeURIComponent(updateSopError.message),
+    );
+  }
+
+  const { error: actionError } = await supabase
+    .from("approval_actions")
+    .insert({
+      sop_version_id: sopVersionId,
+      actor_id: authUser.id,
+      action,
+      comment,
+    });
+
+  if (actionError) {
+    redirect(`/sop/${sopId}?error=` + encodeURIComponent(actionError.message));
+  }
+
+  redirect(`/sop/${sopId}`);
+}
+
+// ---------------------------------------------------------
+// Approver decision: approve (publishes the SOP, sets validity period)
+// or reject (kicks it back to the author as a draft)
+// ---------------------------------------------------------
+const VALIDITY_YEARS = 2; // per the SOP lifecycle plan (2-3 years); adjust as needed
+
+export async function approverDecision(formData: FormData) {
+  const supabase = await createClient();
+
+  const sopId = formData.get("sop_id") as string;
+  const sopVersionId = formData.get("sop_version_id") as string;
+  const decision = formData.get("decision") as "approve" | "reject";
+  const comment = (formData.get("comment") as string) || null;
+
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    redirect("/login");
+  }
+
+  if (decision === "approve") {
+    const now = new Date();
+    const validUntil = new Date(now);
+    validUntil.setFullYear(validUntil.getFullYear() + VALIDITY_YEARS);
+
+    const { error: updateVersionError } = await supabase
+      .from("sop_versions")
+      .update({
+        status: "published",
+        approved_at: now.toISOString(),
+        published_at: now.toISOString(),
+        valid_until: validUntil.toISOString().slice(0, 10),
+      })
+      .eq("id", sopVersionId);
+
+    if (updateVersionError) {
+      redirect(
+        `/sop/${sopId}?error=` + encodeURIComponent(updateVersionError.message),
+      );
+    }
+
+    const { error: updateSopError } = await supabase
+      .from("sops")
+      .update({ status: "published" })
+      .eq("id", sopId);
+
+    if (updateSopError) {
+      redirect(
+        `/sop/${sopId}?error=` + encodeURIComponent(updateSopError.message),
+      );
+    }
+
+    const { error: actionError } = await supabase
+      .from("approval_actions")
+      .insert([
+        {
+          sop_version_id: sopVersionId,
+          actor_id: authUser.id,
+          action: "approved",
+          comment,
+        },
+        {
+          sop_version_id: sopVersionId,
+          actor_id: authUser.id,
+          action: "published",
+        },
+      ]);
+
+    if (actionError) {
+      redirect(
+        `/sop/${sopId}?error=` + encodeURIComponent(actionError.message),
+      );
+    }
+  } else {
+    const { error: updateVersionError } = await supabase
+      .from("sop_versions")
+      .update({ status: "draft" })
+      .eq("id", sopVersionId);
+
+    if (updateVersionError) {
+      redirect(
+        `/sop/${sopId}?error=` + encodeURIComponent(updateVersionError.message),
+      );
+    }
+
+    const { error: updateSopError } = await supabase
+      .from("sops")
+      .update({ status: "draft" })
+      .eq("id", sopId);
+
+    if (updateSopError) {
+      redirect(
+        `/sop/${sopId}?error=` + encodeURIComponent(updateSopError.message),
+      );
+    }
+
+    const { error: actionError } = await supabase
+      .from("approval_actions")
+      .insert({
+        sop_version_id: sopVersionId,
+        actor_id: authUser.id,
+        action: "rejected",
+        comment,
+      });
+
+    if (actionError) {
+      redirect(
+        `/sop/${sopId}?error=` + encodeURIComponent(actionError.message),
+      );
+    }
+  }
+
+  redirect(`/sop/${sopId}`);
+}

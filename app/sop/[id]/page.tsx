@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/get-current-user";
 import { SopStatusBadge } from "@/components/sop/SopStatusBadge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { submitForReview } from "./actions";
+import { submitForReview, reviewerDecision, approverDecision } from "./actions";
 import type { SopStatus } from "@/lib/types";
 
 export default async function SopDetailPage({
@@ -26,7 +28,7 @@ export default async function SopDetailPage({
       id, title, document_number, status,
       category:sop_categories ( name ),
       current_version:sop_versions!fk_sops_current_version (
-        id, version_number, status, content, author_id
+        id, version_number, status, content, author_id, reviewer_id, approver_id
       )
     `,
     )
@@ -40,12 +42,25 @@ export default async function SopDetailPage({
     notFound();
   }
 
+  const currentUser = await getCurrentUser();
+
   const version = Array.isArray(sop.current_version)
     ? sop.current_version[0]
     : sop.current_version;
   const category = Array.isArray(sop.category) ? sop.category[0] : sop.category;
   const content = version?.content ?? {};
   const isDraft = version?.status === "draft";
+  const isAwaitingThisReviewer =
+    version?.status === "in_review" && currentUser?.id === version?.reviewer_id;
+  const isAwaitingThisApprover =
+    version?.status === "in_approval" &&
+    currentUser?.id === version?.approver_id;
+
+  const { data: history } = await supabase
+    .from("approval_actions")
+    .select("action, comment, created_at, actor:users ( name )")
+    .eq("sop_version_id", version?.id ?? "")
+    .order("created_at", { ascending: true });
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -267,6 +282,114 @@ export default async function SopDetailPage({
                     Submit for Review
                   </Button>
                 </form>
+              </div>
+            </>
+          )}
+
+          {isAwaitingThisReviewer && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Review Decision</p>
+                <form action={reviewerDecision} className="space-y-2">
+                  <input type="hidden" name="sop_id" value={sop.id} />
+                  <input
+                    type="hidden"
+                    name="sop_version_id"
+                    value={version!.id}
+                  />
+                  <Textarea
+                    name="comment"
+                    placeholder="Optional comment (required if requesting revision)"
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      name="decision"
+                      value="approve"
+                      className="cursor-pointer transition-transform active:scale-95"
+                    >
+                      Approve Review
+                    </Button>
+                    <Button
+                      type="submit"
+                      name="decision"
+                      value="request_revision"
+                      variant="outline"
+                      className="cursor-pointer transition-transform active:scale-95"
+                    >
+                      Request Revision
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </>
+          )}
+
+          {isAwaitingThisApprover && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Approval Decision</p>
+                <form action={approverDecision} className="space-y-2">
+                  <input type="hidden" name="sop_id" value={sop.id} />
+                  <input
+                    type="hidden"
+                    name="sop_version_id"
+                    value={version!.id}
+                  />
+                  <Textarea
+                    name="comment"
+                    placeholder="Optional comment (required if rejecting)"
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      name="decision"
+                      value="approve"
+                      className="cursor-pointer transition-transform active:scale-95"
+                    >
+                      Approve &amp; Publish
+                    </Button>
+                    <Button
+                      type="submit"
+                      name="decision"
+                      value="reject"
+                      variant="destructive"
+                      className="cursor-pointer transition-transform active:scale-95"
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </>
+          )}
+
+          {history && history.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Approval History</p>
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  {history.map((h, i) => {
+                    const actor = Array.isArray(h.actor) ? h.actor[0] : h.actor;
+                    return (
+                      <li key={i}>
+                        <span className="font-medium text-foreground">
+                          {actor?.name ?? "Unknown"}
+                        </span>{" "}
+                        — {h.action.replace("_", " ")}
+                        {h.comment && <> — &quot;{h.comment}&quot;</>}
+                        <span className="ml-1">
+                          ({new Date(h.created_at).toLocaleString()})
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             </>
           )}
