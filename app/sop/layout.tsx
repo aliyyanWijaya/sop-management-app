@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { getCurrentUser } from "@/lib/get-current-user";
 
-// Layout ini otomatis berlaku untuk /sop, /sop/new, /sop/[id], dst —
-// jadi Sidebar & Header cuma ditulis SEKALI di sini, bukan diulang
-// di tiap page. getCurrentUser() juga cuma dipanggil sekali di sini,
-// bukan di tiap page anak (page anak tinggal query data SOP-nya saja).
+// This layout applies to /sop, /sop/new, /sop/[id], etc — so the
+// Sidebar & Header are written ONCE here, not repeated per page.
+// getCurrentUser() is also only called once here, not in every child page.
 export default async function SopLayout({
   children,
 }: {
@@ -14,23 +14,22 @@ export default async function SopLayout({
 }) {
   const user = await getCurrentUser();
 
-  // Middleware sudah handle redirect kalau belum login sama sekali,
-  // tapi ini jaga-jaga kalau baris di tabel `users` belum ada
-  // (misal trigger signup gagal) — jangan render halaman dengan user null.
+  // Middleware already handles redirecting unauthenticated visitors, but
+  // this is a safety net in case the `users` row is missing for some
+  // reason (e.g. the signup trigger failed) — never render with a null user.
   if (!user) {
     redirect("/login");
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar role={user.role} />
-
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <SidebarProvider>
+      <AppSidebar role={user.role} />
+      <SidebarInset>
         <Header user={user} />
         <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
           {children}
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

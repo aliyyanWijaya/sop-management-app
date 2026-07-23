@@ -1,5 +1,6 @@
 import { logout } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { CurrentUser } from "@/lib/types";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -10,8 +11,11 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function Header({ user }: { user: CurrentUser }) {
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-white px-6">
-      <div />
+    <header className="flex h-14 items-center justify-between border-b bg-white px-4">
+      {/* Toggles the sidebar — collapses to an icon rail on desktop,
+          becomes a slide-out sheet on mobile. Must be used inside
+          SidebarProvider (see app/sop/layout.tsx). */}
+      <SidebarTrigger />
 
       <div className="flex items-center gap-4">
         <div className="text-right text-sm">
