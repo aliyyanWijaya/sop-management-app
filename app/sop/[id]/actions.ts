@@ -33,15 +33,21 @@ export async function submitForReview(formData: FormData) {
     redirect("/login");
   }
 
+  // Two separate simple queries instead of one embedded join — there are
+  // TWO foreign key paths between sop_versions and sops (sop_versions.sop_id
+  // → sops.id, and sops.current_version_id → sop_versions.id), which makes
+  // PostgREST's automatic relationship embedding ambiguous. Keeping these
+  // as plain queries avoids that entirely.
   const { data: version, error: versionError } = await supabase
     .from("sop_versions")
-    .select("content, sop_id, sops!inner(category_id)")
+    .select("content, sop_id")
     .eq("id", sopVersionId)
     .single();
 
   if (versionError || !version) {
     redirect(
-      `/sop/${sopId}?error=` + encodeURIComponent("SOP version not found"),
+      `/sop/${sopId}?error=` +
+        encodeURIComponent(versionError?.message ?? "SOP version not found"),
     );
   }
 
@@ -50,14 +56,25 @@ export async function submitForReview(formData: FormData) {
     redirect(`/sop/${sopId}?error=` + encodeURIComponent(validationError));
   }
 
+  const { data: sopRow, error: sopRowError } = await supabase
+    .from("sops")
+    .select("category_id")
+    .eq("id", version!.sop_id)
+    .single();
+
+  if (sopRowError || !sopRow) {
+    redirect(
+      `/sop/${sopId}?error=` +
+        encodeURIComponent(sopRowError?.message ?? "SOP not found"),
+    );
+  }
+
   // sop_categories holds the default reviewer/approver for this SOP's
   // category — that's what gets assigned onto this specific version.
-  const categoryId = (version!.sops as unknown as { category_id: string })
-    .category_id;
   const { data: category, error: categoryError } = await supabase
     .from("sop_categories")
     .select("default_reviewer_id, default_approver_id")
-    .eq("id", categoryId)
+    .eq("id", sopRow!.category_id)
     .single();
 
   if (
@@ -68,7 +85,8 @@ export async function submitForReview(formData: FormData) {
     redirect(
       `/sop/${sopId}?error=` +
         encodeURIComponent(
-          "This category has no reviewer/approver assigned yet.",
+          categoryError?.message ??
+            "This category has no reviewer/approver assigned yet.",
         ),
     );
   }
