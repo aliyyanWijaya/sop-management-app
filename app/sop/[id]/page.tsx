@@ -67,7 +67,14 @@ export default async function SopDetailPage({
     .select("action, comment, created_at, actor:users ( name )")
     .eq("sop_version_id", version?.id ?? "")
     .order("created_at", { ascending: true });
-
+  console.log({
+    sopStatus: sop.status,
+    currentUserId: currentUser?.id,
+    authorId: version?.author_id,
+    isAuthor,
+    isAdminOrDc,
+    canAssignSocialization,
+  });
   return (
     <div className="max-w-2xl space-y-4">
       <div className="flex items-start justify-between">

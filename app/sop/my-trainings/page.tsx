@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export default async function MyTrainingsPage() {
   const supabase = await createClient();
@@ -91,13 +91,16 @@ export default async function MyTrainingsPage() {
                 </div>
 
                 {!r.passed && sop?.id && (
-                  <Button
-                    asChild
-                    size="sm"
-                    className="cursor-pointer transition-transform active:scale-95"
+                  <Link
+                    href={`/sop/${sop.id}/quiz`}
+                    className={buttonVariants({
+                      size: "sm",
+                      className:
+                        "cursor-pointer transition-transform active:scale-95",
+                    })}
                   >
-                    <Link href={`/sop/${sop.id}/quiz`}>Take Quiz</Link>
-                  </Button>
+                    Take Quiz
+                  </Link>
                 )}
               </CardContent>
             </Card>
