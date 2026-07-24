@@ -289,54 +289,8 @@ export async function approverDecision(formData: FormData) {
       );
     }
 
-    // Generate one socialization_records row per user in this SOP's
-    // department, and (for now) log a stub email to each of them.
-    // Errors here are logged but don't block the publish itself — the
-    // SOP is already published at this point; socialization is a
-    // follow-on step, not a precondition for publishing.
-    const { data: sopWithDept } = await supabase
-      .from("sops")
-      .select("title, document_number, category:sop_categories(department_id)")
-      .eq("id", sopId)
-      .single();
-
-    const category = Array.isArray(sopWithDept?.category)
-      ? sopWithDept.category[0]
-      : sopWithDept?.category;
-
-    if (category?.department_id) {
-      const { data: departmentUsers } = await supabase
-        .from("users")
-        .select("id, email")
-        .eq("department_id", category.department_id);
-
-      if (departmentUsers && departmentUsers.length > 0) {
-        const { error: socializationError } = await supabase
-          .from("socialization_records")
-          .insert(
-            departmentUsers.map((u) => ({
-              sop_version_id: sopVersionId,
-              user_id: u.id,
-              notified_at: new Date().toISOString(),
-            })),
-          );
-
-        if (socializationError) {
-          console.error(
-            "Failed to create socialization_records:",
-            socializationError.message,
-          );
-        } else {
-          for (const u of departmentUsers) {
-            await sendSocializationEmail(
-              u.email,
-              sopWithDept!.title,
-              sopWithDept!.document_number,
-            );
-          }
-        }
-      }
-    }
+    // Redirect ke halaman assign setelah publish
+    redirect(`/sop/${sopId}/assign`);
   } else {
     const { error: updateVersionError } = await supabase
       .from("sop_versions")

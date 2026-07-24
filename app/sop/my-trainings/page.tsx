@@ -14,7 +14,7 @@ export default async function MyTrainingsPage() {
     .from("socialization_records")
     .select(
       `
-      id, passed, completed_at, attempt_count, notified_at,
+      id, passed, completed_at, attempt_count, notified_at, due_at,
       sop_version:sop_versions (
         id,
         sop:sops!sop_versions_sop_id_fkey ( id, title, document_number )
@@ -47,6 +47,13 @@ export default async function MyTrainingsPage() {
             ? version.sop[0]
             : version?.sop;
 
+          // Hitung logika overdue di dalam loop untuk setiap record
+          const isOverdue =
+            !r.passed && r.due_at && new Date(r.due_at) < new Date();
+          const formattedDueDate = r.due_at
+            ? new Date(r.due_at).toLocaleDateString()
+            : null;
+
           return (
             <Card key={r.id}>
               <CardHeader className="pb-2">
@@ -58,13 +65,31 @@ export default async function MyTrainingsPage() {
                 </p>
               </CardHeader>
               <CardContent className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {r.passed
-                    ? `Completed ${r.completed_at ? new Date(r.completed_at).toLocaleDateString() : ""}`
-                    : r.attempt_count > 0
-                      ? `Attempted ${r.attempt_count}x — not passed yet`
-                      : "Not started"}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    {r.passed
+                      ? `Completed ${r.completed_at ? new Date(r.completed_at).toLocaleDateString() : ""}`
+                      : r.attempt_count > 0
+                        ? `Attempted ${r.attempt_count}x — not passed yet`
+                        : "Not started"}
+                  </p>
+
+                  {/* Tampilkan status Deadline / Overdue jika training belum lulus */}
+                  {!r.passed && formattedDueDate && (
+                    <div>
+                      {isOverdue ? (
+                        <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-950 dark:text-red-300">
+                          Overdue — batas waktu {formattedDueDate}
+                        </span>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Batas waktu: {formattedDueDate}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {!r.passed && sop?.id && (
                   <Button
                     asChild

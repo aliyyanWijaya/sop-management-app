@@ -50,6 +50,12 @@ export default async function SopDetailPage({
   const category = Array.isArray(sop.category) ? sop.category[0] : sop.category;
   const content = version?.content ?? {};
   const isDraft = version?.status === "draft";
+  const isAuthor = currentUser?.id === version?.author_id;
+  const isAdminOrDc =
+    currentUser?.role === "admin" ||
+    currentUser?.role === "document_controller";
+  const canAssignSocialization =
+    sop.status === "published" && (isAuthor || isAdminOrDc);
   const isAwaitingThisReviewer =
     version?.status === "in_review" && currentUser?.id === version?.reviewer_id;
   const isAwaitingThisApprover =
@@ -75,6 +81,20 @@ export default async function SopDetailPage({
           </p>
         </div>
         <SopStatusBadge status={sop.status as SopStatus} />
+        {canAssignSocialization && (
+          <>
+            <Separator />
+            <Button
+              asChild
+              variant="outline"
+              className="cursor-pointer transition-transform active:scale-95"
+            >
+              <Link href={`/sop/${sop.id}/assign`}>
+                Assign Socialization &amp; Quiz
+              </Link>
+            </Button>
+          </>
+        )}
       </div>
 
       {error && (

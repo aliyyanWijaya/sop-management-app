@@ -96,7 +96,7 @@ export function AppSidebar({ role }: { role: UserRole }) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="pb-18">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
