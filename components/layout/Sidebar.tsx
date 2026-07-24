@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -47,9 +48,28 @@ export function AppSidebar({ role }: { role: UserRole }) {
 
   return (
     <Sidebar>
-      <SidebarHeader>
+      {/* <SidebarHeader>
         <span className="px-2 py-1 text-lg font-semibold">SOP Manager</span>
-      </SidebarHeader>
+      </SidebarHeader> */}
+      <SidebarMenu>
+        <SidebarMenuItem>
+          {/* 1. Ubah/Hapus limitasi ukuran pada SidebarMenuButton jika dirasa kurang tinggi */}
+          <SidebarMenuButton size="lg" asChild className="h-auto py-2">
+            <Link href="/" className="flex items-center justify-start w-full">
+              {/* 2. Langsung masukkan Image TANPA div 'size-8' yang mengunci ukuran */}
+              <Image
+                src="/sop-logo.svg"
+                alt="SOP Logo Mark"
+                width={100} // Tentukan batas lebar maksimal (dalam pixel)
+                height={50} // Tentukan batas tinggi maksimal (dalam pixel)
+                priority
+                className="h-8 w-auto object-contain" // Atur tinggi visual lewat Tailwind (h-10 = 40px)
+              />
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
