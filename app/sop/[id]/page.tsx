@@ -7,7 +7,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { submitForReview, reviewerDecision, approverDecision } from "./actions";
+import {
+  submitForReview,
+  reviewerDecision,
+  approverDecision,
+  softDeleteSop,
+  createRevision,
+} from "./actions";
 import type { SopStatus } from "@/lib/types";
 
 export default async function SopDetailPage({
@@ -89,18 +95,6 @@ export default async function SopDetailPage({
         </div>
         <SopStatusBadge status={sop.status as SopStatus} />
       </div>
-
-      {canAssignSocialization && (
-        <Link
-          href={`/sop/${sop.id}/assign`}
-          className={buttonVariants({
-            variant: "outline",
-            className: "cursor-pointer transition-transform active:scale-95",
-          })}
-        >
-          Assign Socialization &amp; Quiz
-        </Link>
-      )}
 
       {error && (
         <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>
@@ -423,6 +417,34 @@ export default async function SopDetailPage({
           )}
         </CardContent>
       </Card>
+      {canAssignSocialization && (
+        <Link
+          href={`/sop/${sop.id}/assign`}
+          className={buttonVariants({
+            variant: "outline",
+            className: "cursor-pointer transition-transform active:scale-95",
+          })}
+        >
+          Assign Socialization &amp; Quiz
+        </Link>
+      )}
+      {isDraft && isAuthor && (
+        <form action={softDeleteSop}>
+          <input type="hidden" name="sop_id" value={sop.id} />
+          <Button type="submit" variant="destructive">
+            Delete
+          </Button>
+        </form>
+      )}
+
+      {sop.status === "published" && (isAuthor || isAdminOrDc) && (
+        <form action={createRevision}>
+          <input type="hidden" name="sop_id" value={sop.id} />
+          <Button type="submit" variant="outline">
+            Edit (Buat Revisi)
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

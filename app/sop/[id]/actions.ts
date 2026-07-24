@@ -240,6 +240,28 @@ export async function approverDecision(formData: FormData) {
     const validUntil = new Date(now);
     validUntil.setFullYear(validUntil.getFullYear() + VALIDITY_YEARS);
 
+    // tambahkan di dalam blok decision === 'approve', setelah update sop_versions & sops:
+    const { data: oldVersion } = await supabase
+      .from("sops")
+      .select("current_version_id")
+      .eq("id", sopId)
+      .single();
+
+    await supabase
+      .from("sops")
+      .update({ status: "published", current_version_id: sopVersionId })
+      .eq("id", sopId);
+
+    if (
+      oldVersion?.current_version_id &&
+      oldVersion.current_version_id !== sopVersionId
+    ) {
+      await supabase
+        .from("sop_versions")
+        .update({ status: "superseded" })
+        .eq("id", oldVersion.current_version_id);
+    }
+
     const { error: updateVersionError } = await supabase
       .from("sop_versions")
       .update({
@@ -331,4 +353,91 @@ export async function approverDecision(formData: FormData) {
   }
 
   redirect(`/sop/${sopId}`);
+}
+
+export async function softDeleteSop(formData: FormData) {
+  const supabase = await createClient();
+  const sopId = formData.get("sop_id") as string;
+
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) redirect("/login");
+
+  const { error } = await supabase
+    .from("sops")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", sopId);
+
+  if (error) {
+    redirect(`/sop/${sopId}?error=` + encodeURIComponent(error.message));
+  }
+
+  redirect("/sop");
+}
+
+export async function createRevision(formData: FormData) {
+  const supabase = await createClient();
+  const sopId = formData.get("sop_id") as string;
+
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) redirect("/login");
+
+  const { data: sop } = await supabase
+    .from("sops")
+    .select("current_version_id")
+    .eq("id", sopId)
+    .single();
+
+  if (!sop?.current_version_id) {
+    redirect(
+      `/sop/${sopId}?error=` +
+        encodeURIComponent(
+          "No active version found for this SOP. Cannot create a revision.",
+        ),
+    );
+  }
+
+  // Kalau sudah ada draft revisi yang lagi jalan, jangan bikin baru lagi
+  const { data: existingDraft } = await supabase
+    .from("sop_versions")
+    .select("id")
+    .eq("sop_id", sopId)
+    .eq("status", "draft")
+    .neq("id", sop!.current_version_id)
+    .maybeSingle();
+
+  if (existingDraft) {
+    redirect(`/sop/${sopId}/edit?version=${existingDraft.id}`);
+  }
+
+  const { data: currentVersion } = await supabase
+    .from("sop_versions")
+    .select("content, version_number")
+    .eq("id", sop!.current_version_id)
+    .single();
+
+  const { data: newVersion, error } = await supabase
+    .from("sop_versions")
+    .insert({
+      sop_id: sopId,
+      version_number: currentVersion!.version_number + 1,
+      content: currentVersion!.content,
+      status: "draft",
+      author_id: authUser.id,
+      previous_version_id: sop!.current_version_id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !newVersion) {
+    redirect(
+      `/sop/${sopId}?error=` +
+        encodeURIComponent(error?.message ?? "Failed to create revision"),
+    );
+  }
+
+  redirect(`/sop/${sopId}/edit?version=${newVersion!.id}`);
 }

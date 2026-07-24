@@ -19,10 +19,10 @@ export default async function EditSopPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; version?: string }>;
 }) {
   const { id } = await params;
-  const searchParamsResolved = await searchParams;
+  const { error, version: versionIdParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: sop } = await supabase
@@ -42,13 +42,20 @@ export default async function EditSopPage({
     notFound();
   }
 
-  const version = Array.isArray(sop.current_version)
-    ? sop.current_version[0]
-    : sop.current_version;
-
-  if (!version) {
-    notFound();
-  }
+  const versionQuery = versionIdParam
+    ? supabase
+        .from("sop_versions")
+        .select("id, content, status")
+        .eq("id", versionIdParam)
+    : supabase
+        .from("sop_versions")
+        .select("id, content, status")
+        .eq("sop_id", id)
+        .order("version_number", { ascending: false })
+        .limit(1);
+  const { data: versionRows } = await versionQuery;
+  const version = Array.isArray(versionRows) ? versionRows[0] : versionRows;
+  if (!version) notFound();
 
   const canEdit = version!.status === "draft";
   const content = version!.content ?? {};
@@ -68,9 +75,9 @@ export default async function EditSopPage({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {searchParamsResolved.error && (
+          {error && (
             <p className="rounded bg-red-50 p-3 text-sm text-red-700">
-              {searchParamsResolved.error}
+              {error}
             </p>
           )}
 
