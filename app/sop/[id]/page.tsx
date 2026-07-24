@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/get-current-user";
 import { SopStatusBadge } from "@/components/sop/SopStatusBadge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -84,15 +84,15 @@ export default async function SopDetailPage({
       </div>
 
       {canAssignSocialization && (
-        <Button
-          asChild
-          variant="outline"
-          className="cursor-pointer transition-transform active:scale-95"
+        <Link
+          href={`/sop/${sop.id}/assign`}
+          className={buttonVariants({
+            variant: "outline",
+            className: "cursor-pointer transition-transform active:scale-95",
+          })}
         >
-          <Link href={`/sop/${sop.id}/assign`}>
-            Assign Socialization &amp; Quiz
-          </Link>
-        </Button>
+          Assign Socialization &amp; Quiz
+        </Link>
       )}
 
       {error && (
@@ -278,13 +278,16 @@ export default async function SopDetailPage({
             <>
               <Separator />
               <div className="flex gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  asChild
-                  className="cursor-pointer transition-transform active:scale-95"
+                <Link
+                  href={`/sop/${sop.id}/edit`}
+                  className={buttonVariants({
+                    variant: "outline",
+                    className:
+                      "cursor-pointer transition-transform active:scale-95",
+                  })}
                 >
-                  <Link href={`/sop/${sop.id}/edit`}>Edit</Link>
-                </Button>
+                  Edit
+                </Link>
 
                 <form action={submitForReview}>
                   <input type="hidden" name="sop_id" value={sop.id} />
