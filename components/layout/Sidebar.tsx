@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { logout } from "@/app/auth/actions";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -13,8 +14,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import type { UserRole } from "@/lib/types";
+import { LogOut } from "lucide-react";
 
 const NAV_ITEMS = [
   {
@@ -53,17 +56,15 @@ export function AppSidebar({ role }: { role: UserRole }) {
       </SidebarHeader> */}
       <SidebarMenu>
         <SidebarMenuItem>
-          {/* 1. Ubah/Hapus limitasi ukuran pada SidebarMenuButton jika dirasa kurang tinggi */}
           <SidebarMenuButton size="lg" asChild className="h-auto py-2">
             <Link href="/" className="flex items-center justify-start w-full">
-              {/* 2. Langsung masukkan Image TANPA div 'size-8' yang mengunci ukuran */}
               <Image
                 src="/sop-logo.svg"
                 alt="SOP Logo Mark"
-                width={100} // Tentukan batas lebar maksimal (dalam pixel)
-                height={50} // Tentukan batas tinggi maksimal (dalam pixel)
+                width={100}
+                height={50}
                 priority
-                className="h-8 w-auto object-contain" // Atur tinggi visual lewat Tailwind (h-10 = 40px)
+                className="h-8 w-auto object-contain"
               />
             </Link>
           </SidebarMenuButton>
@@ -94,6 +95,24 @@ export function AppSidebar({ role }: { role: UserRole }) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <form action={logout} className="w-full">
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 active:scale-95 cursor-pointer text-left"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </button>
+              </form>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
