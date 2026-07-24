@@ -81,21 +81,19 @@ export default async function SopDetailPage({
           </p>
         </div>
         <SopStatusBadge status={sop.status as SopStatus} />
-        {canAssignSocialization && (
-          <>
-            <Separator />
-            <Button
-              asChild
-              variant="outline"
-              className="cursor-pointer transition-transform active:scale-95"
-            >
-              <Link href={`/sop/${sop.id}/assign`}>
-                Assign Socialization &amp; Quiz
-              </Link>
-            </Button>
-          </>
-        )}
       </div>
+
+      {canAssignSocialization && (
+        <Button
+          asChild
+          variant="outline"
+          className="cursor-pointer transition-transform active:scale-95"
+        >
+          <Link href={`/sop/${sop.id}/assign`}>
+            Assign Socialization &amp; Quiz
+          </Link>
+        </Button>
+      )}
 
       {error && (
         <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>

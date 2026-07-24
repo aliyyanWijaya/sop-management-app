@@ -56,7 +56,7 @@ export function AppSidebar({ role }: { role: UserRole }) {
       </SidebarHeader> */}
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" asChild className="h-auto py-2">
+          <SidebarMenuButton size="lg" className="h-auto py-2">
             <Link href="/" className="flex items-center justify-start w-full">
               <Image
                 src="/sop-logo.svg"
@@ -85,7 +85,7 @@ export function AppSidebar({ role }: { role: UserRole }) {
 
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive}>
+                    <SidebarMenuButton isActive={isActive}>
                       <Link href={item.href}>{item.label}</Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -99,16 +99,12 @@ export function AppSidebar({ role }: { role: UserRole }) {
       <SidebarFooter className="pb-18">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <form action={logout} className="w-full">
-                <button
-                  type="submit"
-                  className="flex w-full items-center gap-2 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 active:scale-95 cursor-pointer text-left"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Logout</span>
-                </button>
-              </form>
+            <SidebarMenuButton
+              onClick={() => logout()}
+              className="text-sidebar-foreground hover:bg-destructive/10"
+            >
+              <LogOut className="size-4" />
+              <span>Log out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
