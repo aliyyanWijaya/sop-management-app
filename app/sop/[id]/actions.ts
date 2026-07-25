@@ -376,14 +376,25 @@ export async function softDeleteSop(formData: FormData) {
   redirect("/sop");
 }
 
+// app/sop/[id]/actions.ts
 export async function createRevision(formData: FormData) {
   const supabase = await createClient();
   const sopId = formData.get("sop_id") as string;
+  const changeSummary = (formData.get("change_summary") as string)?.trim();
 
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
   if (!authUser) redirect("/login");
+
+  if (!changeSummary) {
+    redirect(
+      `/sop/${sopId}?error=` +
+        encodeURIComponent(
+          "Please explain the changes being made in this revision.",
+        ),
+    );
+  }
 
   const { data: sop } = await supabase
     .from("sops")
@@ -428,6 +439,7 @@ export async function createRevision(formData: FormData) {
       status: "draft",
       author_id: authUser.id,
       previous_version_id: sop!.current_version_id,
+      change_summary: changeSummary, // <-- disimpan di sini
     })
     .select("id")
     .single();

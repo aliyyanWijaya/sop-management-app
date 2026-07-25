@@ -67,6 +67,9 @@ export default async function SopDetailPage({
   const isAwaitingThisApprover =
     version?.status === "in_approval" &&
     currentUser?.id === version?.approver_id;
+  const canStartRevision =
+    sop.status === "published" && (isAuthor || isAdminOrDc);
+  const canDelete = (isDraft && isAuthor) || isAdminOrDc;
 
   const { data: history } = await supabase
     .from("approval_actions")
@@ -422,20 +425,47 @@ export default async function SopDetailPage({
           Assign Socialization &amp; Quiz
         </Link>
       )}
-      {isDraft && isAuthor && (
-        <form action={softDeleteSop}>
-          <input type="hidden" name="sop_id" value={sop.id} />
-          <Button type="submit" variant="destructive">
-            Delete
-          </Button>
-        </form>
+      {canStartRevision && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-medium">
+              Make new Revision
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={createRevision} className="space-y-2">
+              <input type="hidden" name="sop_id" value={sop.id} />
+              <label className="block text-sm font-medium">
+                Explain change that is being made in this revision (required)
+              </label>
+              <Textarea
+                name="change_summary"
+                required
+                rows={2}
+                placeholder="add the flow process"
+              />
+              <Button
+                type="submit"
+                className="cursor-pointer transition-transform active:scale-95"
+              >
+                Make revision (v{(version?.version_number ?? 1) + 1})
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
-      {sop.status === "published" && (isAuthor || isAdminOrDc) && (
-        <form action={createRevision}>
+      {/* Delete — soft delete, tidak hilang dari database */}
+      {canDelete && (
+        <form action={softDeleteSop}>
           <input type="hidden" name="sop_id" value={sop.id} />
-          <Button type="submit" variant="outline">
-            Edit (Buat Revisi)
+          <Button
+            type="submit"
+            variant="destructive"
+            size="sm"
+            className="cursor-pointer transition-transform active:scale-95"
+          >
+            Delete SOP
           </Button>
         </form>
       )}
