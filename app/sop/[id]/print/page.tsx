@@ -83,44 +83,37 @@ export default async function SopPrintPage({
       <PrintButton />
 
       {/* Header berulang tiap halaman cetak — lihat CSS @media print di bawah */}
-      <div className="print-header">
-        <table className="header-table">
-          <tbody>
-            <tr>
-              <td rowSpan={2} className="logo-cell">
-                Company Logo
-              </td>
-              <td rowSpan={2} className="doc-type-cell">
-                Document Type (Standard Operating Procedure)
-                <div className="doc-title">{sop.title}</div>
-              </td>
-              <td className="label-cell">Doc No</td>
-              <td className="colon-cell">:</td>
-              <td className="value-cell">{sop.document_number}</td>
-            </tr>
-            <tr>
-              <td className="label-cell">Version</td>
-              <td className="colon-cell">:</td>
-              <td className="value-cell">v{version.version_number}</td>
-            </tr>
-            <tr>
-              <td rowSpan={2} className="doc-title-cell">
-                Document Title
-              </td>
-              <td className="label-cell">Date</td>
-              <td className="colon-cell">:</td>
-              <td className="value-cell">
-                {fmt(version.published_at ?? version.created_at)}
-              </td>
-            </tr>
-            <tr>
-              <td className="label-cell">Page</td>
-              <td className="colon-cell">:</td>
-              <td className="value-cell page-number" />
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table className="header-table">
+        <tbody>
+          <tr>
+            <td rowSpan={4} className="logo-cell">
+              Company Logo
+            </td>
+            <td rowSpan={2} className="doc-type-cell">
+              Document Type (Standard Operating Procedure)
+            </td>
+            <td className="label-cell">Doc No :</td>
+            <td className="value-cell">{sop.document_number}</td>
+          </tr>
+          <tr>
+            <td className="label-cell">Version :</td>
+            <td className="value-cell">v{version.version_number}</td>
+          </tr>
+          <tr>
+            <td rowSpan={2} className="doc-type-cell doc-title-cell">
+              {sop.title}
+            </td>
+            <td className="label-cell">Date :</td>
+            <td className="value-cell">
+              {fmt(version.published_at ?? version.created_at)}
+            </td>
+          </tr>
+          <tr>
+            <td className="label-cell">Page :</td>
+            <td className="value-cell page-number" />
+          </tr>
+        </tbody>
+      </table>
 
       {/* Tabel pembuat/reviewer/approver — hanya di halaman pertama */}
       <table className="signers-table">
@@ -264,17 +257,18 @@ export default async function SopPrintPage({
         .header-table, .signers-table, .revision-table {
           width: 100%; border-collapse: collapse; margin-bottom: 16px;
         }
+        .header-table, .signers-table, .revision-table {
+        width: 100%; border-collapse: collapse; margin-bottom: 16px;
+        }
         .header-table td, .signers-table th, .signers-table td,
         .revision-table th, .revision-table td {
-          border: 1px solid #000; padding: 4px 8px; text-align: left; font-size: 12px;
+        border: 1px solid #000; padding: 4px 8px; text-align: left; font-size: 12px;
         }
         .logo-cell { width: 100px; text-align: center; vertical-align: middle; }
-        .doc-type-cell { width: 260px; }
+        .doc-type-cell { width: 260px; vertical-align: middle; }
         .doc-title { font-weight: 600; margin-top: 4px; }
-        .label-cell { width: 60px; }
-        .colon-cell { width: 12px; text-align: center; }
-        .doc-body section { margin-bottom: 14px; }
-        .doc-body h3 { font-size: 13px; margin: 0 0 4px; }
+        .label-cell { width: 70px; white-space: nowrap; }
+        .value-cell { }
 
         /* No-print button */
         .no-print-btn { }
