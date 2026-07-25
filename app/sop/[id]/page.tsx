@@ -1,3 +1,4 @@
+// Taruh di: app/sop/[id]/page.tsx  (replace file yang lama)
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -5,8 +6,18 @@ import { getCurrentUser } from "@/lib/get-current-user";
 import { SopStatusBadge } from "@/components/sop/SopStatusBadge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  TitleBlock,
+  PurposeBlock,
+  ScopeBlock,
+  ReferencesBlock,
+  DefinitionsBlock,
+  RolesBlock,
+  ProcedureBlock,
+  AppendicesBlock,
+} from "@/components/sop/SopEditableBlocks";
 import {
   submitForReview,
   reviewerDecision,
@@ -14,6 +25,16 @@ import {
   softDeleteSop,
   createRevision,
 } from "./actions";
+import {
+  updateTitleBlock,
+  updatePurposeBlock,
+  updateScopeBlock,
+  updateReferencesBlock,
+  updateDefinitionsBlock,
+  updateRolesBlock,
+  updateProcedureBlock,
+  updateAppendicesBlock,
+} from "./block-actions";
 import type { SopStatus } from "@/lib/types";
 
 export default async function SopDetailPage({
@@ -34,7 +55,8 @@ export default async function SopDetailPage({
       id, title, document_number, status,
       category:sop_categories ( name ),
       current_version:sop_versions!fk_sops_current_version (
-        id, version_number, status, content, author_id, reviewer_id, approver_id
+        id, version_number, status, content, author_id, reviewer_id, approver_id,
+        created_at, reviewed_at, approved_at, published_at
       )
     `,
     )
@@ -55,11 +77,18 @@ export default async function SopDetailPage({
     : sop.current_version;
   const category = Array.isArray(sop.category) ? sop.category[0] : sop.category;
   const content = version?.content ?? {};
+
   const isDraft = version?.status === "draft";
   const isAuthor = currentUser?.id === version?.author_id;
   const isAdminOrDc =
     currentUser?.role === "admin" ||
     currentUser?.role === "document_controller";
+
+  // Satu-satunya syarat block bisa diklik-edit: masih draft, dan yang
+  // login adalah author atau admin/document_controller. RLS di database
+  // tetap jadi pertahanan terakhir (lihat block-actions.ts).
+  const canEditContent = isDraft && (isAuthor || isAdminOrDc);
+
   const canAssignSocialization =
     sop.status === "published" && (isAuthor || isAdminOrDc);
   const isAwaitingThisReviewer =
@@ -71,237 +100,179 @@ export default async function SopDetailPage({
     sop.status === "published" && (isAuthor || isAdminOrDc);
   const canDelete = (isDraft && isAuthor) || isAdminOrDc;
 
+  // Nama + jabatan author/reviewer/approver — dipakai di tabel signers,
+  // sama seperti di halaman print.
+  const stakeholderIds = [
+    version?.author_id,
+    version?.reviewer_id,
+    version?.approver_id,
+  ].filter((v): v is string => Boolean(v));
+
+  const { data: stakeholders } =
+    stakeholderIds.length > 0
+      ? await supabase
+          .from("users")
+          .select("id, name, position_title")
+          .in("id", stakeholderIds)
+      : {
+          data: [] as {
+            id: string;
+            name: string;
+            position_title: string | null;
+          }[],
+        };
+
+  const findUser = (uid?: string | null) =>
+    stakeholders?.find((u) => u.id === uid);
+  const author = findUser(version?.author_id);
+  const reviewer = findUser(version?.reviewer_id);
+  const approver = findUser(version?.approver_id);
+
   const { data: history } = await supabase
     .from("approval_actions")
     .select("action, comment, created_at, actor:users ( name )")
     .eq("sop_version_id", version?.id ?? "")
     .order("created_at", { ascending: true });
-  console.log({
-    sopStatus: sop.status,
-    currentUserId: currentUser?.id,
-    authorId: version?.author_id,
-    isAuthor,
-    isAdminOrDc,
-    canAssignSocialization,
-  });
+
+  const fmt = (d: string | null | undefined) =>
+    d ? new Date(d).toLocaleDateString("id-ID") : "-";
+
   return (
-    <div className="max-w-2xl space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="font-mono text-xs text-muted-foreground">
-            {sop.document_number}
-          </p>
-          <h1 className="text-xl font-semibold">{sop.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {category?.name ?? "-"}
-          </p>
-        </div>
+    <div className="max-w-3xl space-y-4">
+      <div className="flex items-center justify-between">
         <SopStatusBadge status={sop.status as SopStatus} />
+        {canEditContent && (
+          <p className="text-xs text-muted-foreground">
+            Click on any block to edit. Changes are saved automatically.
+          </p>
+        )}
       </div>
 
       {error && (
         <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-medium">
-            Version {version?.version_number ?? "-"} — {version?.status ?? "-"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm">
-            <span className="font-medium">1.0 Purpose: </span>
-            {content.purpose || (
-              <span className="italic text-muted-foreground">
-                not filled in yet
-              </span>
-            )}
-          </p>
-
-          <Separator />
-
-          <p className="text-sm">
-            <span className="font-medium">2.0 Scope — Applies to: </span>
-            {content.scope?.applies_to || (
-              <span className="italic text-muted-foreground">
-                not filled in yet
-              </span>
-            )}
-          </p>
-
-          {content.references?.length > 0 && (
-            <>
-              <Separator />
-              <div className="text-sm">
-                <p className="font-medium">
-                  3.0 References &amp; Related Documents
+      <Card className="overflow-hidden p-0">
+        {/* Header dokumen — mirip layout print, tapi title bisa diklik-edit */}
+        <table className="w-full border-collapse text-sm">
+          <tbody>
+            <tr className="border-b bg-muted/20">
+              <td className="w-2/3 border-r px-4 py-3 align-top">
+                <TitleBlock
+                  title={sop.title}
+                  editable={canEditContent}
+                  onSave={updateTitleBlock.bind(null, sop.id, version!.id)}
+                />
+                <p className="mt-1 font-mono text-xs text-muted-foreground">
+                  {sop.document_number}
                 </p>
-                <ul className="ml-4 list-disc text-muted-foreground">
-                  {content.references.map(
-                    (ref: { title: string; doc_number: string }, i: number) => (
-                      <li key={i}>
-                        {ref.doc_number && `${ref.doc_number} — `}
-                        {ref.title}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            </>
-          )}
+                <p className="text-xs text-muted-foreground">
+                  {category?.name ?? "-"}
+                </p>
+              </td>
+              <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                <p>
+                  <span className="font-medium text-foreground">Version:</span>{" "}
+                  v{version?.version_number ?? "-"} ({version?.status ?? "-"})
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">Date:</span>{" "}
+                  {fmt(version?.published_at ?? version?.created_at)}
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-          {content.definitions?.length > 0 && (
-            <>
-              <Separator />
-              <div className="text-sm">
-                <p className="font-medium">4.0 Definitions</p>
-                <ul className="ml-4 list-disc text-muted-foreground">
-                  {content.definitions.map(
-                    (def: { term: string; definition: string }, i: number) => (
-                      <li key={i}>
-                        <span className="font-medium text-foreground">
-                          {def.term}
-                        </span>
-                        : {def.definition}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            </>
-          )}
+        {/* Signers — read-only, sama seperti di halaman print (di-assign
+            lewat alur review/approval, bukan diedit langsung di sini) */}
+        <table className="w-full border-collapse text-center text-xs">
+          <thead>
+            <tr className="border-b bg-muted/40">
+              <th className="border-r px-2 py-1.5 font-medium">Created By</th>
+              <th className="border-r px-2 py-1.5 font-medium">Reviewed By</th>
+              <th className="px-2 py-1.5 font-medium">Approved By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b">
+              <td className="border-r px-2 py-1.5">{author?.name ?? "-"}</td>
+              <td className="border-r px-2 py-1.5">{reviewer?.name ?? "-"}</td>
+              <td className="px-2 py-1.5">{approver?.name ?? "-"}</td>
+            </tr>
+            <tr className="text-muted-foreground">
+              <td className="border-r px-2 py-1.5">
+                {author?.position_title ?? "-"}
+              </td>
+              <td className="border-r px-2 py-1.5">
+                {reviewer?.position_title ?? "-"}
+              </td>
+              <td className="px-2 py-1.5">{approver?.position_title ?? "-"}</td>
+            </tr>
+          </tbody>
+        </table>
 
-          {content.roles_responsibilities?.length > 0 && (
-            <>
-              <Separator />
-              <div className="text-sm">
-                <p className="font-medium">5.0 Roles and Responsibilities</p>
-                <ul className="ml-4 list-disc text-muted-foreground">
-                  {content.roles_responsibilities.map(
-                    (
-                      r: { role: string; responsibility: string },
-                      i: number,
-                    ) => (
-                      <li key={i}>
-                        <span className="font-medium text-foreground">
-                          {r.role}
-                        </span>
-                        : {r.responsibility}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            </>
-          )}
-
-          {content.procedure?.length > 0 && (
-            <>
-              <Separator />
-              <div className="text-sm">
-                <p className="font-medium">6.0 Procedure</p>
-                <ol className="ml-4 list-decimal space-y-2 text-muted-foreground">
-                  {content.procedure.map(
-                    (
-                      step: {
-                        major_step: string;
-                        actions: string[];
-                        notes: string[];
-                      },
-                      i: number,
-                    ) => (
-                      <li key={i}>
-                        <span className="font-medium text-foreground">
-                          {step.major_step}
-                        </span>
-                        {step.actions?.length > 0 && (
-                          <ul className="ml-4 list-disc">
-                            {step.actions.map((action, j) => (
-                              <li key={j}>{action}</li>
-                            ))}
-                          </ul>
-                        )}
-                        {step.notes?.length > 0 && (
-                          <p className="mt-1 text-xs italic">
-                            Note: {step.notes.join(" • ")}
-                          </p>
-                        )}
-                      </li>
-                    ),
-                  )}
-                </ol>
-              </div>
-            </>
-          )}
-
-          {content.appendices?.length > 0 && (
-            <>
-              <Separator />
-              <div className="text-sm">
-                <p className="font-medium">7.0 Appendices</p>
-                <ul className="ml-4 list-disc text-muted-foreground">
-                  {content.appendices.map(
-                    (
-                      a: {
-                        type: string;
-                        description: string;
-                        file_url: string;
-                      },
-                      i: number,
-                    ) => (
-                      <li key={i}>
-                        {a.description} {a.type && `(${a.type})`}
-                        {a.file_url && (
-                          <>
-                            {" — "}
-                            <a
-                              href={a.file_url}
-                              className="underline"
-                              target="_blank"
-                            >
-                              view
-                            </a>
-                          </>
-                        )}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            </>
-          )}
+        <CardContent className="space-y-4 p-4">
+          <PurposeBlock
+            purpose={content.purpose ?? ""}
+            editable={canEditContent}
+            onSave={updatePurposeBlock.bind(null, sop.id, version!.id)}
+          />
+          <Separator />
+          <ScopeBlock
+            appliesTo={content.scope?.applies_to ?? ""}
+            excludes={content.scope?.excludes ?? ""}
+            editable={canEditContent}
+            onSave={updateScopeBlock.bind(null, sop.id, version!.id)}
+          />
+          <Separator />
+          <ReferencesBlock
+            references={content.references ?? []}
+            editable={canEditContent}
+            onSave={updateReferencesBlock.bind(null, sop.id, version!.id)}
+          />
+          <Separator />
+          <DefinitionsBlock
+            definitions={content.definitions ?? []}
+            editable={canEditContent}
+            onSave={updateDefinitionsBlock.bind(null, sop.id, version!.id)}
+          />
+          <Separator />
+          <RolesBlock
+            roles={content.roles_responsibilities ?? []}
+            editable={canEditContent}
+            onSave={updateRolesBlock.bind(null, sop.id, version!.id)}
+          />
+          <Separator />
+          <ProcedureBlock
+            procedure={content.procedure ?? []}
+            editable={canEditContent}
+            onSave={updateProcedureBlock.bind(null, sop.id, version!.id)}
+          />
+          <Separator />
+          <AppendicesBlock
+            appendices={content.appendices ?? []}
+            editable={canEditContent}
+            onSave={updateAppendicesBlock.bind(null, sop.id, version!.id)}
+          />
 
           {isDraft && (
             <>
               <Separator />
-              <div className="flex gap-2 pt-1">
-                <Link
-                  href={`/sop/${sop.id}/edit`}
-                  className={buttonVariants({
-                    variant: "outline",
-                    className:
-                      "cursor-pointer transition-transform active:scale-95",
-                  })}
+              <form action={submitForReview}>
+                <input type="hidden" name="sop_id" value={sop.id} />
+                <input
+                  type="hidden"
+                  name="sop_version_id"
+                  value={version!.id}
+                />
+                <Button
+                  type="submit"
+                  className="cursor-pointer transition-transform active:scale-95"
                 >
-                  Edit
-                </Link>
-
-                <form action={submitForReview}>
-                  <input type="hidden" name="sop_id" value={sop.id} />
-                  <input
-                    type="hidden"
-                    name="sop_version_id"
-                    value={version!.id}
-                  />
-                  <Button
-                    type="submit"
-                    className="cursor-pointer transition-transform active:scale-95"
-                  >
-                    Submit for Review
-                  </Button>
-                </form>
-              </div>
+                  Submit for Review
+                </Button>
+              </form>
             </>
           )}
 
@@ -414,6 +385,7 @@ export default async function SopDetailPage({
           )}
         </CardContent>
       </Card>
+
       {canAssignSocialization && (
         <Link
           href={`/sop/${sop.id}/assign`}
@@ -425,14 +397,11 @@ export default async function SopDetailPage({
           Assign Socialization &amp; Quiz
         </Link>
       )}
+
       {canStartRevision && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-medium">
-              Make new Revision
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
+            <p className="mb-2 text-base font-medium">Make new Revision</p>
             <form action={createRevision} className="space-y-2">
               <input type="hidden" name="sop_id" value={sop.id} />
               <label className="block text-sm font-medium">
@@ -469,20 +438,19 @@ export default async function SopDetailPage({
           </Button>
         </form>
       )}
+
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/sop/${sop.id}/print`}
-            target="_blank"
-            className={buttonVariants({
-              variant: "outline",
-              size: "sm",
-              className: "cursor-pointer transition-transform active:scale-95",
-            })}
-          >
-            Print / PDF
-          </Link>
-        </div>
+        <Link
+          href={`/sop/${sop.id}/print`}
+          target="_blank"
+          className={buttonVariants({
+            variant: "outline",
+            size: "sm",
+            className: "cursor-pointer transition-transform active:scale-95",
+          })}
+        >
+          Print / PDF
+        </Link>
       </div>
     </div>
   );
