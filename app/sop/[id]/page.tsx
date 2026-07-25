@@ -126,12 +126,6 @@ export default async function SopDetailPage({
               </span>
             )}
           </p>
-          {content.scope?.excludes && (
-            <p className="text-sm">
-              <span className="font-medium">Scope — Does not apply to: </span>
-              {content.scope.excludes}
-            </p>
-          )}
 
           {content.references?.length > 0 && (
             <>

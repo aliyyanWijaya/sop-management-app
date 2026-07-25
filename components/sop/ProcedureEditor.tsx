@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 type ProcedureStep = {
   major_step: string;
   actions: string[];
-  notes: string[];
 };
 
 // A small reusable sub-list for plain strings (used for both "actions"

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 // in on the edit page after the draft exists.
 const EMPTY_CONTENT = {
   purpose: "",
-  scope: { applies_to: "", excludes: "" },
+  scope: { applies_to: "" },
   references: [],
   definitions: [],
   roles_responsibilities: [],

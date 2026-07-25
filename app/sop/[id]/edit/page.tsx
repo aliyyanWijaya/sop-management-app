@@ -146,19 +146,6 @@ export default async function EditSopPage({
                 />
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  2.0 Scope — Does not apply to{" "}
-                  <span className="text-muted-foreground">(optional)</span>
-                </label>
-                <Textarea
-                  name="scope_excludes"
-                  defaultValue={content.scope?.excludes ?? ""}
-                  rows={2}
-                  placeholder="e.g. Does not apply to imported raw materials (see SOP-QA-005)."
-                />
-              </div>
-
               <Separator />
 
               <DynamicListEditor

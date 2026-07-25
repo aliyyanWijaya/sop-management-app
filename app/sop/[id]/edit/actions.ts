@@ -11,7 +11,6 @@ export async function updateSopContent(formData: FormData) {
   const title = formData.get("title") as string;
   const purpose = formData.get("purpose") as string;
   const appliesTo = formData.get("scope_applies_to") as string;
-  const excludes = formData.get("scope_excludes") as string;
 
   // These three come from DynamicListEditor as a JSON string (array of
   // {key: value} row objects) — parsed here rather than trying to encode
@@ -54,7 +53,7 @@ export async function updateSopContent(formData: FormData) {
   const mergedContent = {
     ...existing!.content,
     purpose,
-    scope: { applies_to: appliesTo, excludes },
+    scope: { applies_to: appliesTo },
     references,
     definitions,
     roles_responsibilities: rolesResponsibilities,
