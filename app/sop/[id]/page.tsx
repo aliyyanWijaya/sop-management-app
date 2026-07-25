@@ -469,6 +469,21 @@ export default async function SopDetailPage({
           </Button>
         </form>
       )}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/sop/${sop.id}/print`}
+            target="_blank"
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: "cursor-pointer transition-transform active:scale-95",
+            })}
+          >
+            Print / PDF
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
