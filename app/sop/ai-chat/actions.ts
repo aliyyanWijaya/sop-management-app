@@ -85,7 +85,11 @@ export async function askSopAssistant(
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "anthropic-version": "2023-06-01",
+    },
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 1000,
@@ -99,6 +103,16 @@ export async function askSopAssistant(
       ],
     }),
   });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Anthropic API error:", response.status, errText);
+    return {
+      answer:
+        "Sorry, the SOP assistant is temporarily unavailable. Please try again shortly.",
+      citations: [],
+    };
+  }
 
   const data = await response.json();
   const rawText: string =

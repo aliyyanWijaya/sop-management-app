@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Database,
   LogOut,
+  Bot,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -42,6 +43,12 @@ const NAV_ITEMS = [
     label: "My Trainings",
     icon: GraduationCap,
     roles: ["staff", "document_controller", "admin"],
+  },
+  {
+    href: "/sop/ai-chat",
+    label: "SOP Assistant",
+    icon: Bot,
+    roles: ["staff", "document_controller", "admin"], // open to everyone — auditors need it too
   },
   {
     href: "/sop/master-data",
