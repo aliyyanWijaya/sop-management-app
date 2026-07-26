@@ -303,6 +303,31 @@ export async function approverDecision(formData: FormData) {
       );
     }
 
+    // Rebuild the searchable chunks the SOP AI Assistant reads from, so it
+    // picks up this version's content immediately. Safe to run every publish
+    // — the function clears any previous chunks for this sop_id first.
+    const { data: publishedVersion } = await supabase
+      .from("sop_versions")
+      .select(
+        "content, sop:sops!sop_versions_sop_id_fkey(document_number, title)",
+      )
+      .eq("id", sopVersionId)
+      .single();
+
+    if (publishedVersion) {
+      const sopMeta = Array.isArray(publishedVersion.sop)
+        ? publishedVersion.sop[0]
+        : publishedVersion.sop;
+
+      await supabase.rpc("regenerate_sop_content_chunks", {
+        p_sop_id: sopId,
+        p_sop_version_id: sopVersionId,
+        p_document_number: sopMeta?.document_number ?? "",
+        p_title: sopMeta?.title ?? "",
+        p_content: publishedVersion.content,
+      });
+    }
+
     // Generate one socialization_records row per user in this SOP's
     // department, and (for now) log a stub email to each of them.
     // Errors here are logged but don't block the publish itself — the
