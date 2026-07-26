@@ -214,8 +214,10 @@ export async function reviewerDecision(formData: FormData) {
 }
 
 // ---------------------------------------------------------
-// Approver decision: approve (publishes the SOP, sets validity period)
-// or reject (kicks it back to the author as a draft)
+// Approver decision: approve (publishes the SOP, sets validity period,
+// and — new — supersedes whatever version was previously current, so
+// multiple revisions of the same SOP can exist over time) or reject
+// (kicks it back to the author as a draft)
 // ---------------------------------------------------------
 const VALIDITY_YEARS = 2; // per the SOP lifecycle plan (2-3 years); adjust as needed
 
@@ -240,7 +242,8 @@ export async function approverDecision(formData: FormData) {
     const validUntil = new Date(now);
     validUntil.setFullYear(validUntil.getFullYear() + VALIDITY_YEARS);
 
-    // tambahkan di dalam blok decision === 'approve', setelah update sop_versions & sops:
+    // Grab whatever version was current before this one takes over, so
+    // it can be marked "superseded" below.
     const { data: oldVersion } = await supabase
       .from("sops")
       .select("current_version_id")
@@ -278,17 +281,6 @@ export async function approverDecision(formData: FormData) {
       );
     }
 
-    const { error: updateSopError } = await supabase
-      .from("sops")
-      .update({ status: "published" })
-      .eq("id", sopId);
-
-    if (updateSopError) {
-      redirect(
-        `/sop/${sopId}?error=` + encodeURIComponent(updateSopError.message),
-      );
-    }
-
     const { error: actionError } = await supabase
       .from("approval_actions")
       .insert([
@@ -311,8 +303,54 @@ export async function approverDecision(formData: FormData) {
       );
     }
 
-    // Redirect ke halaman assign setelah publish
-    redirect(`/sop/${sopId}/assign`);
+    // Generate one socialization_records row per user in this SOP's
+    // department, and (for now) log a stub email to each of them.
+    // Errors here are logged but don't block the publish itself — the
+    // SOP is already published at this point; socialization is a
+    // follow-on step, not a precondition for publishing.
+    const { data: sopWithDept } = await supabase
+      .from("sops")
+      .select("title, document_number, category:sop_categories(department_id)")
+      .eq("id", sopId)
+      .single();
+
+    const category = Array.isArray(sopWithDept?.category)
+      ? sopWithDept.category[0]
+      : sopWithDept?.category;
+
+    if (category?.department_id) {
+      const { data: departmentUsers } = await supabase
+        .from("users")
+        .select("id, email")
+        .eq("department_id", category.department_id);
+
+      if (departmentUsers && departmentUsers.length > 0) {
+        const { error: socializationError } = await supabase
+          .from("socialization_records")
+          .insert(
+            departmentUsers.map((u) => ({
+              sop_version_id: sopVersionId,
+              user_id: u.id,
+              notified_at: new Date().toISOString(),
+            })),
+          );
+
+        if (socializationError) {
+          console.error(
+            "Failed to create socialization_records:",
+            socializationError.message,
+          );
+        } else {
+          for (const u of departmentUsers) {
+            await sendSocializationEmail(
+              u.email,
+              sopWithDept!.title,
+              sopWithDept!.document_number,
+            );
+          }
+        }
+      }
+    }
   } else {
     const { error: updateVersionError } = await supabase
       .from("sop_versions")
@@ -355,6 +393,18 @@ export async function approverDecision(formData: FormData) {
   redirect(`/sop/${sopId}`);
 }
 
+// ---------------------------------------------------------
+// Soft delete: marks a SOP with `deleted_at` instead of removing rows,
+// so it can still be referenced in history/reports and isn't gone
+// forever by mistake.
+//
+// REQUIRES a `deleted_at timestamptz` column on `sops` — see
+// sql-008_sop_soft_delete.sql. Also: the SOP list page and this detail
+// page's query don't currently filter out soft-deleted rows anywhere —
+// that filter (`.is('deleted_at', null)`) needs adding wherever SOPs are
+// listed/fetched, or a "deleted" SOP will still show up. Flagging this
+// rather than silently leaving it half-wired.
+// ---------------------------------------------------------
 export async function softDeleteSop(formData: FormData) {
   const supabase = await createClient();
   const sopId = formData.get("sop_id") as string;
@@ -362,7 +412,10 @@ export async function softDeleteSop(formData: FormData) {
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
-  if (!authUser) redirect("/login");
+
+  if (!authUser) {
+    redirect("/login");
+  }
 
   const { error } = await supabase
     .from("sops")
@@ -373,10 +426,25 @@ export async function softDeleteSop(formData: FormData) {
     redirect(`/sop/${sopId}?error=` + encodeURIComponent(error.message));
   }
 
-  redirect("/sop");
+  redirect("/sop?message=" + encodeURIComponent("SOP deleted"));
 }
 
-// app/sop/[id]/actions.ts
+// ---------------------------------------------------------
+// Start a new revision of a published SOP: creates a new draft
+// sop_versions row (content copied from the current published version,
+// so the author isn't starting from a blank page), and points
+// sops.current_version_id / status at it. The previously-published
+// version is left untouched here — it only gets marked "superseded"
+// once this new revision is itself approved & published (see
+// approverDecision above), matching the supersede logic already there.
+//
+// Note: change_summary isn't persisted anywhere yet. approval_actions'
+// `action` check constraint doesn't have a "revision_started" value, so
+// logging this to that table the way submitForReview/reviewerDecision
+// do would fail — either add a new allowed action value via migration,
+// or store change_summary in a dedicated column/table if you want a
+// permanent record of it.
+// ---------------------------------------------------------
 export async function createRevision(formData: FormData) {
   const supabase = await createClient();
   const sopId = formData.get("sop_id") as string;
@@ -385,52 +453,47 @@ export async function createRevision(formData: FormData) {
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
-  if (!authUser) redirect("/login");
+
+  if (!authUser) {
+    redirect("/login");
+  }
 
   if (!changeSummary) {
     redirect(
       `/sop/${sopId}?error=` +
-        encodeURIComponent(
-          "Please explain the changes being made in this revision.",
-        ),
+        encodeURIComponent("Please describe the change for this revision."),
     );
   }
 
-  const { data: sop } = await supabase
+  const { data: currentSop, error: sopError } = await supabase
     .from("sops")
     .select("current_version_id")
     .eq("id", sopId)
     .single();
 
-  if (!sop?.current_version_id) {
+  if (sopError || !currentSop?.current_version_id) {
+    redirect(
+      `/sop/${sopId}?error=` +
+        encodeURIComponent(sopError?.message ?? "Current version not found"),
+    );
+  }
+
+  const { data: currentVersion, error: versionError } = await supabase
+    .from("sop_versions")
+    .select("content, version_number")
+    .eq("id", currentSop!.current_version_id)
+    .single();
+
+  if (versionError || !currentVersion) {
     redirect(
       `/sop/${sopId}?error=` +
         encodeURIComponent(
-          "No active version found for this SOP. Cannot create a revision.",
+          versionError?.message ?? "Current version content not found",
         ),
     );
   }
 
-  // Kalau sudah ada draft revisi yang lagi jalan, jangan bikin baru lagi
-  const { data: existingDraft } = await supabase
-    .from("sop_versions")
-    .select("id")
-    .eq("sop_id", sopId)
-    .eq("status", "draft")
-    .neq("id", sop!.current_version_id)
-    .maybeSingle();
-
-  if (existingDraft) {
-    redirect(`/sop/${sopId}/edit?version=${existingDraft.id}`);
-  }
-
-  const { data: currentVersion } = await supabase
-    .from("sop_versions")
-    .select("content, version_number")
-    .eq("id", sop!.current_version_id)
-    .single();
-
-  const { data: newVersion, error } = await supabase
+  const { data: newVersion, error: insertError } = await supabase
     .from("sop_versions")
     .insert({
       sop_id: sopId,
@@ -438,18 +501,28 @@ export async function createRevision(formData: FormData) {
       content: currentVersion!.content,
       status: "draft",
       author_id: authUser.id,
-      previous_version_id: sop!.current_version_id,
-      change_summary: changeSummary, // <-- disimpan di sini
+      previous_version_id: currentSop!.current_version_id,
     })
     .select("id")
     .single();
 
-  if (error || !newVersion) {
+  if (insertError || !newVersion) {
     redirect(
       `/sop/${sopId}?error=` +
-        encodeURIComponent(error?.message ?? "Failed to create revision"),
+        encodeURIComponent(insertError?.message ?? "Failed to create revision"),
     );
   }
 
-  redirect(`/sop/${sopId}/edit?version=${newVersion!.id}`);
+  const { error: updateSopError } = await supabase
+    .from("sops")
+    .update({ current_version_id: newVersion!.id, status: "draft" })
+    .eq("id", sopId);
+
+  if (updateSopError) {
+    redirect(
+      `/sop/${sopId}?error=` + encodeURIComponent(updateSopError.message),
+    );
+  }
+
+  redirect(`/sop/${sopId}`);
 }
