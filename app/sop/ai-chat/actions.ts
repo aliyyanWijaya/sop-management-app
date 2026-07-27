@@ -150,3 +150,97 @@ export async function askSopAssistant(
 
   return { answer: parsed.answer, citations };
 }
+
+// ---------------------------------------------------------
+// Read-only SOP fetch for the AI chat's inline preview panel.
+// Deliberately trimmed down vs app/sop/[id]/page.tsx — no approval
+// history, no reviewer/approver ids, no action forms — since this is
+// only ever rendered next to the chat as a "verify the source" view.
+// RLS (sops_select_published_to_all) already guarantees only published
+// SOPs come back here for a normal staff/auditor user, which matches
+// what the assistant is allowed to cite in the first place.
+// ---------------------------------------------------------
+export type SopPreviewData = {
+  id: string;
+  title: string;
+  document_number: string;
+  status: string;
+  category: { name: string } | null;
+  version: {
+    id: string;
+    version_number: number;
+    status: string;
+    content: any;
+    created_at: string;
+    reviewed_at: string | null;
+    approved_at: string | null;
+    published_at: string | null;
+    valid_until: string | null;
+    author: { name: string } | null;
+    reviewer: { name: string } | null;
+    approver: { name: string } | null;
+  } | null;
+};
+
+export async function getSopPreview(
+  sopId: string,
+): Promise<SopPreviewData | null> {
+  const supabase = await createClient();
+
+  const { data: sop } = await supabase
+    .from("sops")
+    .select(
+      `
+      id, title, document_number, status,
+      category:sop_categories ( name ),
+      current_version:sop_versions!fk_sops_current_version (
+        id, version_number, status, content,
+        created_at, reviewed_at, approved_at, published_at, valid_until,
+        author:users!sop_versions_author_id_fkey ( name ),
+        reviewer:users!sop_versions_reviewer_id_fkey ( name ),
+        approver:users!sop_versions_approver_id_fkey ( name )
+      )
+    `,
+    )
+    .eq("id", sopId)
+    .single();
+
+  if (!sop) return null;
+
+  const rawVersion = Array.isArray(sop.current_version)
+    ? sop.current_version[0]
+    : sop.current_version;
+  const category = Array.isArray(sop.category) ? sop.category[0] : sop.category;
+
+  const version = rawVersion
+    ? {
+        id: rawVersion.id,
+        version_number: rawVersion.version_number,
+        status: rawVersion.status,
+        content: rawVersion.content,
+        created_at: rawVersion.created_at,
+        reviewed_at: rawVersion.reviewed_at,
+        approved_at: rawVersion.approved_at,
+        published_at: rawVersion.published_at,
+        valid_until: rawVersion.valid_until,
+        author: Array.isArray(rawVersion.author)
+          ? rawVersion.author[0]
+          : rawVersion.author,
+        reviewer: Array.isArray(rawVersion.reviewer)
+          ? rawVersion.reviewer[0]
+          : rawVersion.reviewer,
+        approver: Array.isArray(rawVersion.approver)
+          ? rawVersion.approver[0]
+          : rawVersion.approver,
+      }
+    : null;
+
+  return {
+    id: sop.id,
+    title: sop.title,
+    document_number: sop.document_number,
+    status: sop.status,
+    category: category ?? null,
+    version,
+  };
+}

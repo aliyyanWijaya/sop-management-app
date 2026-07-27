@@ -1,5 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SopAiChatPanel } from "@/components/sop/SopAiChatPanel";
+import { SopAiChatWorkspace } from "@/components/sop/SopAiChatWorkspace";
 
 // Open to every authenticated role (staff, document_controller, admin) —
 // this is also the page an external auditor would be shown, so it
@@ -9,20 +8,8 @@ import { SopAiChatPanel } from "@/components/sop/SopAiChatPanel";
 // regenerate_sop_content_chunks() in sql/007_ai_chat_support.sql).
 export default function SopAiChatPage() {
   return (
-    <div className="max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>SOP Assistant</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Ask questions about any published procedure. Every answer includes
-            the exact SOP number and a link back to the source document for
-            verification — useful during internal or external audits.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <SopAiChatPanel />
-        </CardContent>
-      </Card>
+    <div className="max-w-5xl">
+      <SopAiChatWorkspace />
     </div>
   );
 }

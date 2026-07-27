@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import { type SopPreviewTarget } from "@/components/sop/SopPreviewPanel";
 import { Bot, User, SendHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +21,11 @@ const SUGGESTED_PROMPTS = [
   "How do we handle a customer complaint?",
 ];
 
-export function SopAiChatPanel() {
+export function SopAiChatPanel({
+  onOpenSop,
+}: {
+  onOpenSop: (target: SopPreviewTarget) => void;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -158,13 +162,20 @@ export function SopAiChatPanel() {
                           {c.section_label}
                         </p>
                         <p className="italic">&quot;{c.quote}&quot;</p>
-                        <Link
-                          href={`/sop/${c.sop_id}`}
-                          target="_blank"
-                          className="inline-block underline"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenSop({
+                              sopId: c.sop_id,
+                              documentNumber: c.document_number,
+                              sectionLabel: c.section_label,
+                              quote: c.quote,
+                            })
+                          }
+                          className="inline-block cursor-pointer text-left underline underline-offset-2 hover:text-primary"
                         >
                           View SOP to verify →
-                        </Link>
+                        </button>
                       </CardContent>
                     </Card>
                   ))}
