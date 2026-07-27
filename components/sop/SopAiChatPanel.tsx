@@ -6,7 +6,14 @@ import { Bot, User, SendHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { askSopAssistant, type SopCitation } from "@/app/sop/ai-chat/actions";
+
+type SopCitation = {
+  sop_id: string;
+  document_number: string;
+  title: string;
+  section_label: string;
+  quote: string;
+};
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -21,6 +28,61 @@ const SUGGESTED_PROMPTS = [
   "How do we handle a customer complaint?",
 ];
 
+const DISPLAY_CUT_MARKER = "@@@CITATIONS@@@";
+const CITATIONS_RESULT_MARKER = "@@@CITATIONS_RESULT@@@";
+
+// Lightweight markdown renderer: only handles **bold** and "- " bullet
+// lists, which is all the assistant prompt is instructed to produce.
+// Deliberately no external markdown package — this keeps rendering
+// cheap enough to re-run on every streamed chunk.
+function renderInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={`${keyPrefix}-${i}`}>{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={`${keyPrefix}-${i}`}>{part}</span>
+    ),
+  );
+}
+
+function MarkdownLite({ text }: { text: string }) {
+  const lines = text.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let listBuffer: string[] = [];
+
+  const flushList = (key: string) => {
+    if (listBuffer.length === 0) return;
+    blocks.push(
+      <ul key={key} className="list-disc space-y-1 pl-4">
+        {listBuffer.map((item, i) => (
+          <li key={`${key}-li-${i}`}>{renderInline(item, `${key}-${i}`)}</li>
+        ))}
+      </ul>,
+    );
+    listBuffer = [];
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      listBuffer.push(trimmed.slice(2));
+      return;
+    }
+    flushList(`list-${idx}`);
+    if (trimmed.length > 0) {
+      blocks.push(
+        <p key={`p-${idx}`} className="leading-relaxed">
+          {renderInline(trimmed, `p-${idx}`)}
+        </p>,
+      );
+    }
+  });
+  flushList("list-end");
+
+  return <div className="space-y-2">{blocks}</div>;
+}
+
 export function SopAiChatPanel({
   onOpenSop,
 }: {
@@ -29,6 +91,7 @@ export function SopAiChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamingStarted, setStreamingStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,18 +112,86 @@ export function SopAiChatPanel({
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    setStreamingStarted(false);
+
+    const history = nextMessages
+      .slice(0, -1)
+      .map(({ role, content }) => ({ role, content }));
+
+    let assistantAdded = false;
 
     try {
-      const history = nextMessages
-        .slice(0, -1)
-        .map(({ role, content }) => ({ role, content }));
-      const result = await askSopAssistant(trimmed, history);
-      setMessages([
-        ...nextMessages,
+      const res = await fetch("/sop/ai-chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: trimmed, history }),
+      });
+
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const displayText = buffer.split(DISPLAY_CUT_MARKER)[0];
+        if (displayText.length === 0) continue;
+
+        setStreamingStarted(true);
+        setMessages((prev) => {
+          if (!assistantAdded) {
+            assistantAdded = true;
+            return [
+              ...prev,
+              { role: "assistant", content: displayText, citations: [] },
+            ];
+          }
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: displayText,
+          };
+          return updated;
+        });
+      }
+
+      const resultIdx = buffer.indexOf(CITATIONS_RESULT_MARKER);
+      let citations: SopCitation[] = [];
+      if (resultIdx !== -1) {
+        try {
+          citations = JSON.parse(
+            buffer.slice(resultIdx + CITATIONS_RESULT_MARKER.length),
+          );
+        } catch {
+          citations = [];
+        }
+      }
+      const finalText = buffer.split(DISPLAY_CUT_MARKER)[0];
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        if (assistantAdded) {
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: finalText,
+            citations,
+          };
+        } else {
+          updated.push({ role: "assistant", content: finalText, citations });
+        }
+        return updated;
+      });
+    } catch {
+      setMessages((prev) => [
+        ...prev,
         {
           role: "assistant",
-          content: result.answer,
-          citations: result.citations,
+          content: "Sorry, something went wrong. Please try again.",
+          citations: [],
         },
       ]);
     } finally {
@@ -147,7 +278,11 @@ export function SopAiChatPanel({
                     : "rounded-tl-sm border bg-background"
                 }`}
               >
-                {m.content}
+                {m.role === "assistant" ? (
+                  <MarkdownLite text={m.content} />
+                ) : (
+                  m.content
+                )}
               </div>
 
               {m.citations && m.citations.length > 0 && (
@@ -185,7 +320,7 @@ export function SopAiChatPanel({
           </div>
         ))}
 
-        {loading && (
+        {loading && !streamingStarted && (
           <div className="flex gap-2">
             <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
               <Bot className="size-4" />
