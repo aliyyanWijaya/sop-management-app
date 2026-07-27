@@ -69,7 +69,7 @@ export function SopAiChatPanel({
   }
 
   return (
-    <div className="flex h-[70vh] flex-col overflow-hidden rounded-lg border">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border">
       {/* Status bar */}
       <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2">
         <span className="relative flex size-2">

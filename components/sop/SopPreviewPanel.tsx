@@ -137,7 +137,7 @@ export function SopPreviewPanel({
   const content = data?.version?.content ?? {};
 
   return (
-    <Card className="relative flex h-[70vh] flex-col overflow-hidden">
+    <Card className="relative flex h-full flex-col overflow-hidden">
       <Button
         variant="outline"
         size="icon"

@@ -6,10 +6,10 @@ import { SopAiChatWorkspace } from "@/components/sop/SopAiChatWorkspace";
 // at the data layer: search_sop_chunks() only reads sop_content_chunks,
 // and that table is only ever populated from published versions (see
 // regenerate_sop_content_chunks() in sql/007_ai_chat_support.sql).
+//
+// No max-w wrapper here on purpose — SopAiChatWorkspace controls its own
+// width: centered single column while chatting, splitting into two
+// columns once a SOP citation is opened.
 export default function SopAiChatPage() {
-  return (
-    <div className="max-w-5xl">
-      <SopAiChatWorkspace />
-    </div>
-  );
+  return <SopAiChatWorkspace />;
 }
